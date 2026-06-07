@@ -129,7 +129,15 @@
             background: radial-gradient(circle, rgba(34, 244, 220, 0.18), transparent 60%);
         }
 
-        .intro-content { position: relative; z-index: 1; max-width: 640px; }
+        .intro-content {
+            position: relative;
+            z-index: 1;
+            min-height: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
         .status-pill {
             display: inline-flex;
@@ -155,11 +163,32 @@
         }
 
         .intro-panel h1 {
-            max-width: 620px;
-            font-size: clamp(40px, 4.7vw, 66px);
-            line-height: 1.08;
-            margin-bottom: 22px;
+            max-width: 720px;
+            font-size: clamp(54px, 6vw, 88px);
+            line-height: 0.98;
+            margin-bottom: 0;
             letter-spacing: 0;
+        }
+
+        .login-hero-title {
+            display: grid;
+            gap: 8px;
+            font-weight: 950;
+            text-wrap: balance;
+        }
+
+        .login-hero-title span {
+            display: block;
+        }
+
+        .login-hero-title .hero-gradient {
+            width: fit-content;
+            padding-right: 8px;
+            color: transparent;
+            background: linear-gradient(100deg, #ffffff 0%, #9efff2 42%, #55a8ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            text-shadow: none;
         }
 
         .intro-panel p {
@@ -215,6 +244,11 @@
 
         .capability strong { display: block; margin-bottom: 8px; font-size: 17px; }
         .capability span { color: rgba(255, 255, 255, 0.72); font-size: 13px; line-height: 1.55; }
+
+        .intro-panel .command-preview,
+        .intro-panel .capability-grid {
+            display: none !important;
+        }
 
         .login-card {
             padding: 32px;
@@ -840,6 +874,7 @@
         }
 
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='platform-hover-nav.css') }}">
 </head>
 <body>
     <nav class="navbar">
@@ -1004,18 +1039,12 @@
         <section class="login-layout">
             <div class="intro-panel">
                 <div class="intro-content">
-                    <div class="status-pill">企业级 AI 办公工作台</div>
-                    <h1>把复杂办公任务交给一个智能工作台</h1>
-                    <p>管理最近上传、处理记录、模板资产、云盘文件和会员额度。后续接入真实账号系统后，这里可以承接微信、手机号、账号安全和团队权限。</p>
-                    <div class="command-preview">
-                        <b>AI</b>
-                        <span>示例：帮我总结这份 PDF，清洗客户数据，并生成汇报摘要。</span>
-                    </div>
-                    <div class="capability-grid">
-                        <div class="capability"><strong>文件记录</strong><span>查看最近上传和下载结果。</span></div>
-                        <div class="capability"><strong>模板资产</strong><span>收藏、上传并复用自定义模板。</span></div>
-                        <div class="capability"><strong>账号安全</strong><span>密码、手机号和登录保护统一管理。</span></div>
-                    </div>
+                    <div class="status-pill">序办 · 企业级 AI 办公中枢</div>
+                    <h1 class="login-hero-title">
+                        <span>新一代</span>
+                        <span class="hero-gradient">AI 智能</span>
+                        <span>办公平台</span>
+                    </h1>
                 </div>
             </div>
 
@@ -1538,5 +1567,6 @@
         })();
     </script>
 
+    <script src="{{ url_for('static', filename='platform-hover-nav.js') }}"></script>
 </body>
 </html>

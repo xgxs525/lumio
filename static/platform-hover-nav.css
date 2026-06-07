@@ -1,0 +1,36 @@
+/* Global hover-only navigation behavior. */
+body .navbar .nav-item.has-dropdown.open > .dropdown,
+body .navbar .nav-item.has-dropdown.open > .dropdown.mega-dropdown {
+    display: none !important;
+}
+
+body .navbar .nav-item.has-dropdown:hover > .dropdown,
+body .navbar .nav-item.has-dropdown.is-hovering > .dropdown {
+    display: block !important;
+}
+
+body .navbar .nav-item.has-dropdown:hover > .dropdown.mega-dropdown,
+body .navbar .nav-item.has-dropdown.is-hovering > .dropdown.mega-dropdown {
+    display: grid !important;
+}
+
+body .navbar .nav-item.has-dropdown:not(:hover):not(.is-hovering) > .dropdown {
+    display: none !important;
+}
+
+body .navbar .nav-item.has-dropdown > .dropdown {
+    pointer-events: auto;
+}
+
+body .navbar .nav-item.has-dropdown > .tools-menu-trigger {
+    cursor: default;
+}
+
+.mega-nav-item::after {
+    content: "";
+    position: absolute;
+    left: -12px;
+    right: -12px;
+    top: 100%;
+    height: 16px;
+}
