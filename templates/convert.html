@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>格式转换 - 序办</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .nav-item {
+            position: relative;
+        }
+        
+        .nav-item a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s;
+            display: block;
+        }
+        
+        .nav-item a:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .nav-item.has-dropdown:hover .dropdown,
+        .nav-item.has-dropdown.open .dropdown {
+            display: block;
+        }
+        
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            min-width: 150px;
+            z-index: 100;
+            margin-top: 0;
+        }
+        
+        .dropdown li {
+            list-style: none;
+        }
+        
+        .dropdown li a {
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 0;
+        }
+        
+        .dropdown li a:hover {
+            background: #f5f5f5;
+        }
+        
+        .lang-select {
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        
+        .lang-select:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .page-header p {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 16px;
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .upload-area {
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 40px;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 56px;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .features-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features-list li {
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+        }
+        
+        .features-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .features-list li::before {
+            content: '✓';
+            color: #10b981;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .navbar {
+            gap: 16px;
+        }
+
+        .nav-links {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+            /* Global nav layer fix */
+        .navbar {
+            position: sticky !important;
+            top: 0;
+            z-index: 10000 !important;
+            overflow: visible !important;
+        }
+
+        .nav-item {
+            z-index: 10001;
+        }
+
+        .dropdown {
+            z-index: 10002 !important;
+        }    
+        .site-footer {
+            max-width: 1180px;
+            margin: 46px auto 0;
+            padding: 26px 22px;
+            color: #64748b;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid #e3edf7;
+            border-radius: 8px;
+            box-shadow: 0 12px 32px rgba(16, 32, 51, 0.06);
+        }
+
+        .site-footer-top {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 14px;
+        }
+
+        .site-footer strong {
+            display: block;
+            color: #0f766e;
+            font-size: 17px;
+            margin-bottom: 6px;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 18px;
+            align-items: center;
+        }
+
+        .footer-links a {
+            color: #26394f;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .footer-links a:hover {
+            color: #0f766e;
+        }
+
+        .site-footer-bottom {
+            padding-top: 14px;
+            border-top: 1px solid #e6edf5;
+            font-size: 13px;
+            line-height: 1.7;
+        }    
+        .login-nav-item.is-hidden {
+            display: none !important;
+        }
+
+        .account-menu {
+            display: none;
+            position: relative;
+        }
+
+        .account-menu.is-visible {
+            display: block;
+        }
+
+        .account-avatar {
+            width: 36px;
+            height: 36px;
+            border: 0;
+            border-radius: 50%;
+            color: #ffffff;
+            background: linear-gradient(135deg, #0f766e, #2563eb);
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(16, 32, 51, 0.16);
+        }
+
+        .account-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            z-index: 10003;
+            min-width: 180px;
+            margin-top: 8px;
+            padding: 8px;
+            background: #ffffff;
+            border: 1px solid #dbe7f3;
+            border-radius: 8px;
+            box-shadow: 0 18px 46px rgba(16, 32, 51, 0.18);
+        }
+
+        .account-menu:hover .account-dropdown,
+        .account-menu.open .account-dropdown {
+            display: grid;
+            gap: 4px;
+        }
+
+        .account-dropdown a,
+        .account-dropdown button {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            border: 0;
+            border-radius: 6px;
+            color: #26394f;
+            background: transparent;
+            text-align: left;
+            text-decoration: none;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .account-dropdown a:hover,
+        .account-dropdown button:hover {
+            color: #0f766e;
+            background: #e9f7f5;
+        }    
+        /* Unified account menu and compliance footer */
+        .navbar { overflow: visible !important; z-index: 10000 !important; }
+        .nav-item { z-index: 10001; }
+        .account-menu { z-index: 10020 !important; }
+        .account-dropdown {
+            top: 100% !important;
+            right: 0 !important;
+            z-index: 10030 !important;
+            min-width: 190px !important;
+            margin-top: 0 !important;
+            pointer-events: auto !important;
+        }
+        .site-footer {
+            max-width: none !important;
+            margin: 46px 0 0 !important;
+            padding: 18px 24px !important;
+            color: #5f6b7a !important;
+            background: #f4f6f8 !important;
+            border: 0 !important;
+            border-top: 1px solid #e1e7ee !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+        .site-footer-inner { width: min(1180px, 100%); margin: 0 auto; }
+        .footer-links { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 10px; }
+        .footer-links a { color: #26394f; text-decoration: none; font-weight: 700; }
+        .footer-links a:hover { color: #0f766e; }
+        .site-footer-bottom {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+            padding-top: 0 !important;
+            border-top: 0 !important;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+    
+        /* Account dropdown flyout panels */
+        .account-dropdown {
+            min-width: 210px !important;
+            overflow: visible !important;
+            padding: 8px !important;
+        }
+        .account-dropdown .account-row,
+        .account-dropdown .account-panel-trigger,
+        .account-dropdown .account-option,
+        .account-dropdown .login-more-accounts {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center;
+            gap: 10px;
+            min-height: 42px;
+            padding: 10px 12px !important;
+            border: 0 !important;
+            border-radius: 6px !important;
+            color: #26394f !important;
+            background: transparent !important;
+            text-align: left !important;
+            text-decoration: none !important;
+            font: inherit !important;
+            font-weight: 800 !important;
+            cursor: pointer;
+        }
+        .account-dropdown .account-row:hover,
+        .account-dropdown .account-panel-trigger:hover,
+        .account-dropdown .account-menu-section.is-open > .account-panel-trigger,
+        .account-dropdown .account-option:hover,
+        .account-dropdown .login-more-accounts:hover {
+            color: #0f766e !important;
+            background: #eef5fb !important;
+        }
+        .account-menu-section { position: relative; }
+        .menu-chevron { margin-left: auto; color: #8a98aa; font-size: 22px; line-height: 1; }
+        .account-submenu {
+            display: none;
+            position: absolute;
+            top: 0;
+            right: calc(100% + 8px);
+            z-index: 10040;
+            width: 340px;
+            max-height: min(520px, 72vh);
+            overflow: auto;
+            padding: 8px;
+            border: 1px solid #dbe7f3;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 22px 54px rgba(16, 32, 51, 0.18);
+        }
+        .appearance-submenu { width: 260px; }
+        .switch-account-submenu { width: 360px; }
+        .account-menu-section:hover > .account-submenu,
+        .account-menu-section.is-open > .account-submenu { display: grid; gap: 4px; }
+        .account-option { justify-content: space-between; }
+        .account-option span:first-child { min-width: 0; }
+        .option-check { margin-left: auto; color: #2563eb; opacity: 0; font-size: 19px; }
+        .account-option.is-selected { color: #2563eb !important; background: #f3f7ff !important; }
+        .account-option.is-selected .option-check { opacity: 1; }
+        .mini-avatar {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            flex: 0 0 auto;
+            border-radius: 8px;
+            color: #ffffff;
+            background: linear-gradient(135deg, #4b7cff, #2563eb);
+            font-weight: 900;
+        }
+        .account-choice { justify-content: flex-start !important; }
+        .account-choice-text { display: grid; min-width: 0; }
+        .account-choice-text strong { color: #26394f; font-size: 15px; }
+        .account-choice-text small { color: #7b8797; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .login-more-accounts { color: #2563eb !important; border-top: 1px solid #e6edf5 !important; margin-top: 4px; }
+        .account-toast {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 12000;
+            padding: 13px 15px;
+            border-radius: 8px;
+            color: #ffffff;
+            background: #0f766e;
+            box-shadow: 0 16px 36px rgba(16, 32, 51, 0.2);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.18s, transform 0.18s;
+        }
+        .account-toast.show { opacity: 1; transform: translateY(0); }
+        @media (max-width: 760px) {
+            .account-submenu {
+                position: fixed;
+                top: 74px;
+                left: 12px;
+                right: 12px;
+                width: auto;
+            }
+        }
+    
+        /* Hover-only flyout fix */
+        .account-submenu {
+            right: 100% !important;
+            margin-right: 0 !important;
+            pointer-events: auto !important;
+        }
+        .account-menu-section:hover > .account-submenu,
+        .account-menu-section.is-open > .account-submenu {
+            display: grid !important;
+            gap: 4px;
+        }
+        .account-menu-section:hover > .account-panel-trigger,
+        .account-menu-section.is-open > .account-panel-trigger {
+            color: #0f766e !important;
+            background: #eef5fb !important;
+        }
+    
+
+        /* Platform navigation */
+        .logo-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3px;
+            padding: 6px;
+            background: linear-gradient(135deg, #1cf0ca, #2684ff);
+            box-shadow: 0 0 24px rgba(34, 244, 220, 0.24);
+        }
+        .logo-mark span { border-radius: 2px; background: rgba(255, 255, 255, 0.82); }
+        .nav-links { align-items: center !important; }
+        .mega-nav-item { position: relative !important; }
+        .mega-dropdown {
+            left: 50% !important;
+            width: min(780px, calc(100vw - 48px)) !important;
+            min-width: min(560px, calc(100vw - 48px)) !important;
+            transform: translateX(-50%) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+            padding: 12px !important;
+            list-style: none !important;
+        }
+        .nav-item.has-dropdown:hover .mega-dropdown,
+        .nav-item.has-dropdown.open .mega-dropdown { display: grid !important; }
+        .mega-dropdown.right-align {
+            left: auto !important;
+            right: 0 !important;
+            transform: none !important;
+        }
+        .mega-dropdown .mega-card {
+            display: grid !important;
+            gap: 6px !important;
+            min-height: 86px;
+            padding: 14px !important;
+            border: 1px solid rgba(120, 168, 255, 0.18) !important;
+            border-radius: 8px !important;
+            background: rgba(255, 255, 255, 0.04) !important;
+            text-decoration: none !important;
+        }
+        .mega-dropdown .mega-card strong { color: inherit; font-size: 15px; line-height: 1.35; }
+        .mega-dropdown .mega-card span { color: #607086; font-size: 13px; line-height: 1.55; font-weight: 600; }
+        .mega-dropdown .mega-card:hover { border-color: rgba(15, 118, 110, 0.36) !important; background: #eef8f6 !important; }
+        body .nav-item > a.nav-cta {
+            color: #061026 !important;
+            background: linear-gradient(135deg, #7ffcef, #3b8cff) !important;
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18) !important;
+        }
+        body .nav-item > a.nav-workbench {
+            color: #0f766e !important;
+            border: 1px solid rgba(15, 118, 110, 0.28) !important;
+            background: #eef8f6 !important;
+        }
+        .workspace-nav-item { display: none !important; }
+        .workspace-nav-item.is-visible { display: block !important; }
+        @media (max-width: 900px) {
+            .mega-dropdown,
+            .mega-dropdown.right-align {
+                left: 0 !important;
+                right: auto !important;
+                width: min(620px, calc(100vw - 28px)) !important;
+                min-width: 0 !important;
+                transform: none !important;
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+    
+
+        /* Stable SaaS mega menu overlay */
+        body .dropdown.mega-dropdown {
+            position: absolute !important;
+            top: calc(100% + 10px) !important;
+            width: min(940px, calc(100vw - 48px)) !important;
+            min-width: min(680px, calc(100vw - 48px)) !important;
+            max-height: calc(100vh - 118px) !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+            padding: 14px !important;
+            border: 1px solid #d8e3f2 !important;
+            border-radius: 12px !important;
+            color: #172033 !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22) !important;
+            backdrop-filter: blur(14px);
+        }
+        body .dropdown.mega-dropdown::-webkit-scrollbar { width: 8px; }
+        body .dropdown.mega-dropdown::-webkit-scrollbar-thumb { background: #c5d3e4; border-radius: 999px; }
+        body .nav-item.has-dropdown:hover .mega-dropdown,
+        body .nav-item.has-dropdown.open .mega-dropdown { display: grid !important; }
+        body .dropdown.mega-dropdown .mega-card {
+            display: grid !important;
+            align-content: start !important;
+            gap: 7px !important;
+            min-height: 96px !important;
+            padding: 15px !important;
+            border: 1px solid #dde8f5 !important;
+            border-radius: 10px !important;
+            color: #172033 !important;
+            background: #f8fbff !important;
+            text-decoration: none !important;
+            opacity: 1 !important;
+        }
+        body .dropdown.mega-dropdown .mega-card strong {
+            display: block !important;
+            color: #0b1b33 !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            line-height: 1.35 !important;
+        }
+        body .dropdown.mega-dropdown .mega-card span {
+            display: block !important;
+            color: #5d6d82 !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            line-height: 1.55 !important;
+        }
+        body .dropdown.mega-dropdown .mega-card:hover {
+            border-color: rgba(15, 118, 110, 0.35) !important;
+            background: #edf8f6 !important;
+            transform: translateY(-1px);
+        }
+        @media (max-width: 1020px) {
+            body .dropdown.mega-dropdown {
+                width: min(680px, calc(100vw - 28px)) !important;
+                min-width: 0 !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+        }
+        @media (max-width: 700px) {
+            body .dropdown.mega-dropdown {
+                left: 0 !important;
+                right: auto !important;
+                transform: none !important;
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+    
+
+        /* Mega menu hover bridge: keep dropdown selectable */
+        .mega-nav-item::after {
+            content: "";
+            position: absolute;
+            left: -18px;
+            right: -18px;
+            top: 100%;
+            height: 18px;
+            pointer-events: auto;
+        }
+        body .dropdown.mega-dropdown {
+            top: calc(100% + 2px) !important;
+            z-index: 30000 !important;
+        }
+        .nav-item.has-dropdown.is-hovering > .mega-dropdown,
+        .nav-item.has-dropdown.open > .mega-dropdown {
+            display: grid !important;
+        }
+
+    
+
+        /* Clickable brand logo */
+        .logo { cursor: pointer; }
+
+    
+
+        /* AI office platform menu polish */
+        body .dropdown.mega-dropdown .mega-group-title {
+            grid-column: 1 / -1;
+            padding: 8px 4px 2px;
+            color: #145ee8;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+        }
+        .account-menu-divider {
+            height: 1px;
+            margin: 8px 0;
+            background: #e8eef6;
+        }
+
+
+        /* Account flyout viewport guard */
+        .account-dropdown { overflow: visible !important; }
+        .account-submenu.account-submenu-anchored {
+            position: fixed !important;
+            right: auto !important;
+            margin-right: 0 !important;
+            width: min(340px, calc(100vw - 24px)) !important;
+            max-height: calc(100vh - 24px) !important;
+            overflow-y: auto !important;
+            z-index: 50000 !important;
+        }
+        .appearance-submenu.account-submenu-anchored {
+            width: min(260px, calc(100vw - 24px)) !important;
+        }
+        .switch-account-submenu.account-submenu-anchored {
+            width: min(360px, calc(100vw - 24px)) !important;
+        }
+        .account-menu-section.is-open > .account-submenu.account-submenu-anchored,
+        .account-menu-section:hover > .account-submenu.account-submenu-anchored {
+            display: grid !important;
+            gap: 4px !important;
+        }
+
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+            序办
+        </div>
+        <div class="nav-links">
+            <div class="nav-item"><a data-nav-key="home" href="/">首页</a></div>
+            <div class="nav-item has-dropdown mega-nav-item">
+                <a href="/ai" class="tools-menu-trigger active" data-nav-key="product">产品</a>
+                <div class="dropdown mega-dropdown product-dropdown">
+                    
+                    <div class="mega-group-title">AI 能力</div>
+                    <a class="mega-card" href="/ai"><strong>AI 办公助手</strong><span>一句话完成文档、表格、分析和自动化任务。</span></a>
+                    <a class="mega-card" href="/tools"><strong>文档处理</strong><span>支持 Word、文本等内容总结、改写、提炼和生成。</span></a>
+                    <a class="mega-card" href="/ai"><strong>PPT 生成</strong><span>根据主题、文档或提纲自动生成演示文稿。</span></a>
+                    <a class="mega-card" href="/ai"><strong>PDF 解析</strong><span>提取 PDF 重点内容，识别结构并自动整理。</span></a>
+                    <div class="mega-group-title">文件与数据</div>
+                    <a class="mega-card" href="/tools"><strong>表格处理</strong><span>支持表格导入、拆分、合并、清洗、分析和公式生成。</span></a>
+                    <a class="mega-card" href="/templates"><strong>多维表格</strong><span>把订单、客户、项目、库存变成在线协作系统。</span></a>
+                    <a class="mega-card" href="/convert"><strong>文件转换</strong><span>支持 Word、表格、PPT、PDF、图片、文本等格式转换。</span></a>
+                    <a class="mega-card" href="/drive" data-requires-login><strong>云盘</strong><span>统一存储表格、文档、模板、知识库附件和处理结果，支持团队共享。</span></a>
+                    <a class="mega-card" href="/batch"><strong>批量处理</strong><span>批量改名、转换、分类、导出和生成处理结果。</span></a>
+                    <div class="mega-group-title">协作与自动化</div>
+                    <a class="mega-card" href="/user/history" data-requires-login><strong>团队协作</strong><span>多人共创、权限管理、任务协同和文件共享。</span></a>
+                    <a class="mega-card" href="/knowledge"><strong>知识库</strong><span>沉淀文档、SOP、常见问题和企业资料。</span></a>
+                    <a class="mega-card" href="/statistics"><strong>数据看板</strong><span>实时查看经营数据、业务趋势和分析结果。</span></a>
+                    <a class="mega-card" href="/batch"><strong>自动化流程</strong><span>让文件、数据、通知和业务流程自动流转。</span></a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown mega-nav-item">
+                <a href="/solutions" class="tools-menu-trigger" data-nav-key="solution">解决方案</a>
+                <div class="dropdown mega-dropdown">
+                    
+                    <a class="mega-card" href="/solutions#ecommerce"><strong>电商运营解决方案</strong><span>订单拆分、销售统计、库存分析、商品数据清洗。</span></a>
+                    <a class="mega-card" href="/solutions#finance"><strong>财务办公解决方案</strong><span>账单整理、费用统计、对账和发票数据处理。</span></a>
+                    <a class="mega-card" href="/solutions#hr"><strong>人事行政解决方案</strong><span>员工信息、考勤统计、工资表处理和批量通知。</span></a>
+                    <a class="mega-card" href="/solutions#sales"><strong>销售管理解决方案</strong><span>客户管理、线索跟进、业绩报表和区域分析。</span></a>
+                    <a class="mega-card" href="/solutions#warehouse"><strong>仓储库存解决方案</strong><span>库存盘点、出入库记录、SKU整理和异常预警。</span></a>
+                    <a class="mega-card" href="/solutions#content"><strong>内容运营解决方案</strong><span>选题表、发布排期、账号数据统计和复盘报告。</span></a>
+                    <a class="mega-card" href="/solutions#legal"><strong>法务合同解决方案</strong><span>合同 PDF 解析、风险条款提取和关键信息总结。</span></a>
+                    <a class="mega-card" href="/solutions#analysis"><strong>企业数据分析解决方案</strong><span>多表汇总、可视化看板和业务趋势分析。</span></a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown mega-nav-item">
+                <a href="/templates" class="tools-menu-trigger" data-nav-key="templates">模板中心</a>
+                <div class="dropdown mega-dropdown">
+                    
+                    <a class="mega-card" href="/templates#ecommerce"><strong>电商模板</strong><span>订单统计、商品管理、库存盘点、达人合作表。</span></a>
+                    <a class="mega-card" href="/templates#finance"><strong>财务模板</strong><span>收支表、对账表、费用报销表、利润分析表。</span></a>
+                    <a class="mega-card" href="/templates#hr"><strong>人事模板</strong><span>员工档案、考勤表、排班表、工资统计表。</span></a>
+                    <a class="mega-card" href="/templates#sales"><strong>销售模板</strong><span>客户管理、销售跟进、业绩统计、回款记录。</span></a>
+                    <a class="mega-card" href="/templates#project"><strong>项目模板</strong><span>任务看板、项目进度、需求管理、问题追踪。</span></a>
+                    <a class="mega-card" href="/templates#analysis"><strong>数据分析模板</strong><span>经营看板、销售分析、区域统计、趋势图表。</span></a>
+                    <a class="mega-card" href="/templates"><strong>汇报 PPT 模板</strong><span>工作汇报、项目汇报、经营分析、方案展示。</span></a>
+                    <a class="mega-card" href="/templates"><strong>文档模板</strong><span>方案文档、会议纪要、工作总结、制度文件。</span></a>
+                    <a class="mega-card" href="/templates"><strong>合同模板</strong><span>合作协议、服务合同、采购合同、保密协议。</span></a>
+                    <a class="mega-card" href="/templates"><strong>流程模板</strong><span>审批流程、文件处理流程、数据流转流程。</span></a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown mega-nav-item">
+                <a href="/resources" class="tools-menu-trigger" data-nav-key="resources">资源中心</a>
+                <div class="dropdown mega-dropdown right-align">
+                    
+                    <a class="mega-card" href="/tutorial"><strong>使用教程</strong><span>基础入门、功能教程和常见操作。</span></a>
+                    <a class="mega-card" href="/resources/cases"><strong>案例中心</strong><span>电商、财务、销售、人事和团队协作案例。</span></a>
+                    <a class="mega-card" href="/resources/help"><strong>帮助文档</strong><span>账号问题、文件上传、数据处理和会员说明。</span></a>
+                    <a class="mega-card" href="/resources/updates"><strong>更新日志</strong><span>新功能发布、版本更新和产品优化。</span></a>
+                    <a class="mega-card" href="/resources/api"><strong>API 文档</strong><span>面向企业客户和开发者的集成说明。</span></a>
+                    <a class="mega-card" href="/resources/security"><strong>安全与合规</strong><span>数据加密、权限管理和企业级安全说明。</span></a>
+                    <a class="mega-card" href="/resources/whitepaper"><strong>产品白皮书</strong><span>平台能力、行业方案和企业部署资料。</span></a>
+                </div>
+            </div>
+            <div class="nav-item"><a href="/pricing" data-nav-key="pricing">价格</a></div>
+            <div class="nav-item login-nav-item"><a href="/login">登录</a></div>
+            <div class="nav-item login-nav-item trial-nav-item"><a class="nav-cta" href="/login?trial=1">免费试用</a></div>
+            <div class="nav-item workspace-nav-item"><a class="nav-workbench" href="/workbench" data-requires-login>工作台</a></div>
+            <div class="nav-item account-menu">
+                <button class="account-avatar" type="button" aria-label="账号菜单">U</button>
+                <div class="account-dropdown">
+                    <a class="account-row" href="/workbench" data-requires-login>工作台</a>
+                    <a class="account-row" href="/drive" data-requires-login>云盘 / 文件中心</a>
+                    <a class="account-row" href="/user/history" data-requires-login>处理记录</a>
+                    <a class="account-row" href="/user/templates">我的模板</a>
+                    <div class="account-menu-divider"></div>
+                    <a class="account-row" href="/user/settings">账号设置</a>
+                    <a class="account-row" href="/user/member">会员中心</a>
+                    <div class="account-menu-section">
+
+                        <button class="account-panel-trigger" type="button" data-panel="appearance">外观<span class="menu-chevron">&rsaquo;</span></button>
+                        <div class="account-submenu appearance-submenu" data-panel-content="appearance">
+                            <button type="button" class="account-option appearance-option" data-value="light"><span>浅色</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option appearance-option" data-value="dark"><span>深色</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option appearance-option" data-value="system"><span>跟随系统</span><span class="option-check">✓</span></button>
+                        </div>
+                    </div>
+                    <div class="account-menu-section">
+
+                        <button class="account-panel-trigger" type="button" data-panel="language">语言<span class="menu-chevron">&rsaquo;</span></button>
+                        <div class="account-submenu language-submenu" data-panel-content="language">
+                            <button type="button" class="account-option language-option" data-value="zh-CN"><span>简体中文</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="zh-HK"><span>繁體中文（中國香港）</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="zh-TW"><span>繁體中文（中國台灣）</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="en"><span>English</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="ja"><span>日本語</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="id"><span>Bahasa Indonesia</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="ms"><span>Bahasa Melayu</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="de"><span>Deutsch</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="es"><span>Español</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="fr"><span>Français</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="it"><span>Italiano</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="pt-BR"><span>Português (Brasil)</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="vi"><span>Tiếng Việt</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="ru"><span>Русский</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="th"><span>ภาษาไทย</span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option language-option" data-value="ko"><span>한국어</span><span class="option-check">✓</span></button>
+                        </div>
+                    </div>
+                    <div class="account-menu-divider"></div>
+                    <a class="account-row" href="/tutorial">帮助中心</a>
+                    <a class="account-row" href="/support">问题反馈</a>
+                    <div class="account-menu-divider"></div>
+                    <div class="account-menu-section">
+
+                        <button class="account-panel-trigger" type="button" data-panel="switch-account">切换账号<span class="menu-chevron">&rsaquo;</span></button>
+                        <div class="account-submenu switch-account-submenu" data-panel-content="switch-account">
+                            <button type="button" class="account-option account-choice" data-account="ayi" data-avatar="阿"><span class="mini-avatar">阿</span><span class="account-choice-text"><strong>阿意臻</strong><small>guangyiiiiiwei@qq.com</small></span><span class="option-check">✓</span></button>
+                            <button type="button" class="account-option account-choice" data-account="ops" data-avatar="序"><span class="mini-avatar">序</span><span class="account-choice-text"><strong>序光运营号</strong><small>office@xuguangxiangshang.com</small></span><span class="option-check">✓</span></button>
+                            <button type="button" class="login-more-accounts">+ 登录更多账号</button>
+                        </div>
+                    </div>
+                    <button type="button" class="account-logout account-row">退出登录</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        (() => {
+            const path = window.location.pathname;
+            const productPaths = ['/ai', '/tools', '/split', '/clean', '/dedup', '/convert', '/beautify', '/formulas', '/statistics', '/charts', '/batch', '/knowledge', '/drive'];
+            const templatePaths = ['/templates', '/user/templates'];
+            const resourcePaths = ['/resources', '/tutorial', '/terms', '/privacy', '/service', '/support'];
+            const consolePaths = ['/workbench', '/console', '/user/files', '/user/history', '/user/settings', '/user/member'];
+            let key = '';
+            if (path === '/') key = 'home';
+            else if (path === '/solutions') key = 'solution';
+            else if (productPaths.some(item => path === item || path.startsWith(item + '/'))) key = 'product';
+            else if (templatePaths.some(item => path === item || path.startsWith(item + '/'))) key = 'templates';
+            else if (resourcePaths.some(item => path === item || path.startsWith(item + '/'))) key = 'resources';
+            else if (path === '/pricing') key = 'pricing';
+            else if (consolePaths.some(item => path === item || path.startsWith(item + '/'))) key = 'console';
+            if (!key) return;
+            document.querySelectorAll('[data-nav-key]').forEach(link => link.classList.remove('active'));
+            document.querySelectorAll(`[data-nav-key="${key}"]`).forEach(link => link.classList.add('active'));
+        })();
+    </script>
+
+
+    <div class="page-header">
+        <h1>🔄 格式转换</h1>
+        <p>办公文件格式互转</p>
+    </div>
+
+    <div class="main-content">
+        <div class="upload-area">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">点击或拖拽上传办公文件</div>
+            <div class="upload-hint">支持表格、文档、PPT、PDF、图片和文本</div>
+        </div>
+        
+        <button class="btn btn-primary">开始格式转换</button>
+        
+        <div style="margin-top: 40px;">
+            <h3 style="color: #333; margin-bottom: 20px; font-size: 20px;">功能特点</h3>
+            <ul class="features-list">
+                <li>表格格式转换</li><li>文档转 PDF</li><li>PDF 转文本</li><li>批量转换</li>
+            </ul>
+        </div>
+    </div>
+    <footer class="site-footer">
+        <div class="site-footer-inner">
+            <div class="footer-links">
+                <a href="/terms">用户协议</a>
+                <a href="/privacy">隐私政策</a>
+                <a href="/service">服务协议</a>
+                <a href="/support">平台客服</a>
+                <a href="/tutorial">帮助中心</a>
+            </div>
+            <div class="site-footer-bottom">
+                <span>Copyright © 2026 广州序光向上科技有限公司</span>
+                <span>粤ICP备2024061848号-1</span>
+                <span>粤公网安备 44010602009876号</span>
+                <span>增值电信业务经营许可证：粤B2-20241288</span>
+            </div>
+        </div>
+    </footer>
+    <script>
+        document.querySelectorAll('.tools-menu-trigger').forEach(trigger => {
+            trigger.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                const item = trigger.closest('.nav-item');
+                document.querySelectorAll('.nav-item.open').forEach(openItem => {
+                    if (openItem !== item) openItem.classList.remove('open');
+                });
+                item.classList.toggle('open');
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item.open').forEach(item => item.classList.remove('open'));
+        });
+    </script>
+
+    <script>
+        (() => {
+            if (window.__excelAccountMenuReady) return;
+            window.__excelAccountMenuReady = true;
+
+            function showAccountToast(message) {
+                let toast = document.querySelector('.account-toast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.className = 'account-toast';
+                    document.body.appendChild(toast);
+                }
+                toast.textContent = message;
+                toast.classList.add('show');
+                clearTimeout(window.__accountToastTimer);
+                window.__accountToastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+            }
+
+            function syncAccountMenu() {
+                const loggedIn = localStorage.getItem('excel_toolbox_logged_in') === '1';
+                const accountAvatar = localStorage.getItem('excel_toolbox_account_avatar') || 'U';
+                document.querySelectorAll('.login-nav-item').forEach(item => item.classList.toggle('is-hidden', loggedIn));
+                document.querySelectorAll('.workspace-nav-item').forEach(item => item.classList.toggle('is-visible', loggedIn));
+                document.querySelectorAll('.account-menu').forEach(item => item.classList.toggle('is-visible', loggedIn));
+                document.querySelectorAll('.account-avatar').forEach(button => { button.textContent = accountAvatar; });
+                syncMenuSelections();
+            }
+
+            function syncMenuSelections() {
+                const language = localStorage.getItem('excel_toolbox_language') || 'zh-CN';
+                const theme = localStorage.getItem('excel_toolbox_theme') || 'system';
+                const account = localStorage.getItem('excel_toolbox_account') || 'ayi';
+                document.querySelectorAll('.language-option').forEach(item => item.classList.toggle('is-selected', item.dataset.value === language));
+                document.querySelectorAll('.appearance-option').forEach(item => item.classList.toggle('is-selected', item.dataset.value === theme));
+                document.querySelectorAll('.account-choice').forEach(item => item.classList.toggle('is-selected', item.dataset.account === account));
+                document.documentElement.dataset.theme = theme;
+            }
+
+            window.syncAccountMenu = syncAccountMenu;
+
+            document.querySelectorAll('.account-avatar').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    const menu = button.closest('.account-menu');
+                    document.querySelectorAll('.account-menu.open').forEach(openMenu => {
+                        if (openMenu !== menu) openMenu.classList.remove('open');
+                    });
+                    menu.classList.toggle('open');
+                });
+            });
+
+            document.querySelectorAll('.account-menu-section').forEach(section => {
+                section.addEventListener('mouseenter', () => {
+                    const dropdown = section.closest('.account-dropdown');
+                    dropdown.querySelectorAll('.account-menu-section.is-open').forEach(item => {
+                        if (item !== section) item.classList.remove('is-open');
+                    });
+                    section.classList.add('is-open');
+                });
+                section.addEventListener('mouseleave', () => {
+                    section.classList.remove('is-open');
+                });
+            });
+
+            document.querySelectorAll('.account-panel-trigger').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                });
+            });
+
+            document.querySelectorAll('.language-option').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    localStorage.setItem('excel_toolbox_language', button.dataset.value);
+                    syncMenuSelections();
+                    showAccountToast('语言已切换');
+                });
+            });
+
+            document.querySelectorAll('.appearance-option').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    localStorage.setItem('excel_toolbox_theme', button.dataset.value);
+                    syncMenuSelections();
+                    showAccountToast('外观设置已保存');
+                });
+            });
+
+            document.querySelectorAll('.account-choice').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    localStorage.setItem('excel_toolbox_logged_in', '1');
+                    localStorage.setItem('excel_toolbox_account', button.dataset.account);
+                    localStorage.setItem('excel_toolbox_account_avatar', button.dataset.avatar || 'U');
+                    syncAccountMenu();
+                    showAccountToast('已切换账号');
+                });
+            });
+
+            document.querySelectorAll('.login-more-accounts').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
+                    window.location.href = '/login/more';
+                });
+            });
+
+            document.querySelectorAll('.account-logout').forEach(button => {
+                button.addEventListener('click', () => {
+                    localStorage.removeItem('excel_toolbox_logged_in');
+                    syncAccountMenu();
+                    window.location.href = '/login';
+                });
+            });
+
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item.open, .account-menu.open, .account-menu-section.is-open').forEach(item => item.classList.remove('open', 'is-open'));
+            });
+
+            syncAccountMenu();
+        })();
+    </script>
+
+    <script>
+        (() => {
+            if (window.__excelLoginGuardReady) return;
+            window.__excelLoginGuardReady = true;
+
+            function isLoggedIn() {
+                return localStorage.getItem('excel_toolbox_logged_in') === '1';
+            }
+
+            function currentPath() {
+                return `${window.location.pathname}${window.location.search}${window.location.hash}` || '/';
+            }
+
+            function normalizeNext(next) {
+                if (!next || next === '#' || next.startsWith('javascript:')) return currentPath();
+                try {
+                    const url = new URL(next, window.location.origin);
+                    if (url.origin !== window.location.origin) return currentPath();
+                    return `${url.pathname}${url.search}${url.hash}` || '/';
+                } catch (error) {
+                    return currentPath();
+                }
+            }
+
+            function redirectToLogin(next) {
+                const target = normalizeNext(next);
+                localStorage.setItem('excel_toolbox_login_redirect', target);
+                window.location.href = `/login?next=${encodeURIComponent(target)}`;
+            }
+
+            window.isExcelLoggedIn = isLoggedIn;
+            window.requireLogin = function requireLogin(next) {
+                if (isLoggedIn()) return true;
+                redirectToLogin(next);
+                return false;
+            };
+
+            const protectedApiPrefixes = [
+                '/api/upload',
+                '/api/preview',
+                '/api/split',
+                '/api/columns',
+                '/api/user/templates',
+                '/api/user/files',
+                '/api/user/history',
+                '/api/user/info',
+                '/api/task',
+                '/api/download'
+            ];
+
+            if (window.fetch && !window.__excelFetchGuarded) {
+                window.__excelFetchGuarded = true;
+                const originalFetch = window.fetch.bind(window);
+                window.fetch = (input, init) => {
+                    const rawUrl = typeof input === 'string' ? input : input.url;
+                    const url = new URL(rawUrl, window.location.origin);
+                    const isProtectedApi = protectedApiPrefixes.some(prefix => url.pathname.startsWith(prefix));
+                    if (isProtectedApi && !isLoggedIn()) {
+                        redirectToLogin(currentPath());
+                        return Promise.reject(new Error('请先登录后再操作'));
+                    }
+                    return originalFetch(input, init);
+                };
+            }
+
+            document.addEventListener('click', event => {
+                const target = event.target.closest('[data-requires-login]');
+                if (!target) return;
+                const next = target.getAttribute('href') || target.dataset.loginNext || currentPath();
+                if (!window.requireLogin(next)) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }, true);
+        })();
+    </script>
+
+
+
+    <script>
+        (() => {
+            if (window.__platformDropdownWheelReady) return;
+            window.__platformDropdownWheelReady = true;
+            function bindWheelGuards() {
+                document.querySelectorAll('.mega-dropdown, .account-dropdown, .account-submenu').forEach(panel => {
+                    if (panel.dataset.wheelGuardReady === '1') return;
+                    panel.dataset.wheelGuardReady = '1';
+                    panel.addEventListener('wheel', event => {
+                        const canScroll = panel.scrollHeight > panel.clientHeight;
+                        if (!canScroll) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            return;
+                        }
+                        const atTop = panel.scrollTop <= 0 && event.deltaY < 0;
+                        const atBottom = Math.ceil(panel.scrollTop + panel.clientHeight) >= panel.scrollHeight && event.deltaY > 0;
+                        if (atTop || atBottom) event.preventDefault();
+                        event.stopPropagation();
+                    }, { passive: false });
+                });
+            }
+            bindWheelGuards();
+            document.addEventListener('mouseover', bindWheelGuards, { passive: true });
+        })();
+    </script>
+
+
+
+    <script>
+        (() => {
+            if (window.__megaDropdownSelectableReady) return;
+            window.__megaDropdownSelectableReady = true;
+            document.querySelectorAll('.mega-nav-item').forEach(item => {
+                let timer;
+                const open = () => {
+                    clearTimeout(timer);
+                    document.querySelectorAll('.mega-nav-item.is-hovering').forEach(other => {
+                        if (other !== item) other.classList.remove('is-hovering');
+                    });
+                    item.classList.add('is-hovering');
+                };
+                const close = () => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => item.classList.remove('is-hovering'), 180);
+                };
+                item.addEventListener('mouseenter', open);
+                item.addEventListener('mouseleave', close);
+                const panel = item.querySelector('.mega-dropdown');
+                if (panel) {
+                    panel.addEventListener('mouseenter', open);
+                    panel.addEventListener('mouseleave', close);
+                    panel.addEventListener('click', event => event.stopPropagation());
+                }
+            });
+        })();
+    </script>
+
+
+
+    <script>
+        (() => {
+            if (window.__brandHomeLinkReady) return;
+            window.__brandHomeLinkReady = true;
+            document.querySelectorAll('.logo').forEach(logo => {
+                logo.setAttribute('role', 'link');
+                logo.setAttribute('tabindex', '0');
+                logo.setAttribute('aria-label', '????');
+                logo.addEventListener('click', () => { window.location.href = '/'; });
+                logo.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        window.location.href = '/';
+                    }
+                });
+            });
+        })();
+    </script>
+
+
+    <script>
+        (() => {
+            if (window.__accountFlyoutClampReady) return;
+            window.__accountFlyoutClampReady = true;
+
+            const margin = 12;
+            const gap = 10;
+
+            function positionSubmenu(section) {
+                const submenu = section.querySelector('.account-submenu');
+                const trigger = section.querySelector('.account-panel-trigger');
+                if (!submenu || !trigger) return;
+
+                submenu.classList.add('account-submenu-anchored');
+                const previousVisibility = submenu.style.visibility;
+                const previousDisplay = submenu.style.display;
+                submenu.style.visibility = 'hidden';
+                submenu.style.display = 'grid';
+
+                const triggerRect = trigger.getBoundingClientRect();
+                const submenuRect = submenu.getBoundingClientRect();
+                let left = triggerRect.left - submenuRect.width - gap;
+                if (left < margin) left = triggerRect.right + gap;
+                if (left + submenuRect.width > window.innerWidth - margin) {
+                    left = window.innerWidth - submenuRect.width - margin;
+                }
+                left = Math.max(margin, left);
+
+                let top = triggerRect.top;
+                if (top + submenuRect.height > window.innerHeight - margin) {
+                    top = window.innerHeight - submenuRect.height - margin;
+                }
+                top = Math.max(margin, top);
+
+                submenu.style.left = `${Math.round(left)}px`;
+                submenu.style.top = `${Math.round(top)}px`;
+                submenu.style.visibility = previousVisibility;
+                submenu.style.display = previousDisplay;
+            }
+
+            function openSection(section) {
+                const dropdown = section.closest('.account-dropdown');
+                if (dropdown) {
+                    dropdown.querySelectorAll('.account-menu-section.is-open').forEach(item => {
+                        if (item !== section) item.classList.remove('is-open');
+                    });
+                }
+                section.classList.add('is-open');
+                requestAnimationFrame(() => positionSubmenu(section));
+            }
+
+            function bindAccountFlyouts() {
+                document.querySelectorAll('.account-menu-section').forEach(section => {
+                    if (section.dataset.flyoutClampReady === '1') return;
+                    section.dataset.flyoutClampReady = '1';
+                    section.addEventListener('mouseenter', () => openSection(section));
+                    section.addEventListener('focusin', () => openSection(section));
+                    const trigger = section.querySelector('.account-panel-trigger');
+                    if (trigger) {
+                        trigger.addEventListener('click', event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openSection(section);
+                        });
+                    }
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                document.querySelectorAll('.account-menu-section.is-open').forEach(positionSubmenu);
+            });
+            window.addEventListener('scroll', () => {
+                document.querySelectorAll('.account-menu-section.is-open').forEach(positionSubmenu);
+            }, true);
+            bindAccountFlyouts();
+            document.addEventListener('mouseover', bindAccountFlyouts, { passive: true });
+        })();
+    </script>
+
+</body>
+</html>
+
+
+
+
+
+

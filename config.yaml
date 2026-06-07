@@ -1,0 +1,49 @@
+# Excel拆分配置文件模板
+# 使用方式: python excel_splitter.py --config config.yaml
+
+# 日志配置
+log_level: INFO  # DEBUG, INFO, WARNING, ERROR
+log_file: ./logs/excel_splitter.log  # 可选，留空则只输出到控制台
+
+# 拆分任务列表
+tasks:
+  # 任务1: 按列值拆分
+  - name: 按部门拆分
+    input_file: ./data/员工信息.xlsx
+    output_dir: ./output
+    rule_type: column  # column, row_count, sheet
+    column: 部门  # 当 rule_type 为 column 时指定
+    
+    # 任务2: 按行数拆分
+  - name: 按行数拆分大文件
+    input_file: ./data/销售记录_big.xlsx
+    output_dir: ./output
+    rule_type: row_count
+    rows_per_file: 10000  # 每个文件10000行
+    
+    # 任务3: 按工作表拆分
+  - name: 按工作表拆分
+    input_file: ./data/年度报表.xlsx
+    output_dir: ./output
+    rule_type: sheet
+
+# ============================================
+# 单任务配置示例（也可直接放在 tasks 下）
+# ============================================
+# 
+# 按列值拆分示例:
+#   input_file: ./data/员工信息.xlsx
+#   output_dir: ./output
+#   rule_type: column
+#   column: 部门
+# 
+# 按行数拆分示例:
+#   input_file: ./data/销售记录.xlsx
+#   output_dir: ./output
+#   rule_type: row_count
+#   rows_per_file: 5000
+# 
+# 按工作表拆分示例:
+#   input_file: ./data/多sheet工作簿.xlsx
+#   output_dir: ./output
+#   rule_type: sheet
