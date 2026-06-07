@@ -738,6 +738,7 @@
 
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='platform-hover-nav.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='platform-message.css') }}">
 </head>
 <body>
     <nav class="navbar">
@@ -902,7 +903,7 @@
         <header class="hero">
             <div>
                 <h1>账号与安全</h1>
-                <p>管理用户资料、登录安全、绑定账号、数据记录和平台客服。当前为前端演示，后续接入真实账号系统即可承接这些操作。</p>
+                <p>管理用户资料、登录安全、绑定账号、数据记录和消息助手。当前为前端演示，后续接入真实账号系统即可承接这些操作。</p>
             </div>
             <div class="account-badge">
                 <strong>阿意臻</strong>
@@ -918,7 +919,6 @@
                 <a href="#notice">通知偏好</a>
                 <a href="#data">数据与记录</a>
                 <a href="#cancellation">账号注销</a>
-                <a href="/support">平台客服</a>
             </aside>
 
             <div>
@@ -1002,7 +1002,7 @@
 
                 <section class="panel" id="notice">
                     <h2>通知偏好</h2>
-                    <p class="hint">控制处理完成、模板更新、会员额度和客服回复提醒。</p>
+                    <p class="hint">控制处理完成、模板更新、会员额度和支持回复提醒。</p>
                     <div class="option-list">
                         <div class="option">
                             <div><strong>处理完成提醒</strong><span>批量任务完成后通知我。</span></div>
@@ -1013,7 +1013,7 @@
                             <span class="switch"></span>
                         </div>
                         <div class="option">
-                            <div><strong>客服回复提醒</strong><span>工单有回复时通知我。</span></div>
+                            <div><strong>支持回复提醒</strong><span>工单有回复时通知我。</span></div>
                             <span class="switch"></span>
                         </div>
                     </div>
@@ -1039,11 +1039,6 @@
                         </div>
                     </div>
                 </section>
-
-                <section class="support-strip">
-                    <p><strong>需要人工帮助？</strong><br>平台客服可以处理上传失败、会员额度、模板下载、账号安全和支付相关问题。</p>
-                    <a class="btn btn-primary" href="/support">联系平台客服</a>
-                </section>
             </div>
         </section>
     </main>
@@ -1054,7 +1049,6 @@
                 <a href="/terms">用户协议</a>
                 <a href="/privacy">隐私政策</a>
                 <a href="/service">服务协议</a>
-                <a href="/support">平台客服</a>
                 <a href="/tutorial">帮助中心</a>
             </div>
             <div class="site-footer-bottom">
@@ -1462,5 +1456,6 @@
     </script>
 
     <script src="{{ url_for('static', filename='platform-hover-nav.js') }}"></script>
+    <script src="{{ url_for('static', filename='platform-message.js') }}"></script>
 </body>
 </html>

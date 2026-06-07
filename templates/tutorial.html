@@ -573,6 +573,7 @@
 
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='platform-hover-nav.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='platform-message.css') }}">
 </head>
 <body>
     <nav class="navbar">
@@ -895,7 +896,7 @@
                 </article>
                 <article class="card">
                     <h3>结果不符合预期怎么办？</h3>
-                    <p>先核对表头行、拆分列、空值和合并单元格，再联系平台客服提交样例。</p>
+                    <p>先核对表头行、拆分列、空值和合并单元格，再联系消息助手提交样例。</p>
                 </article>
             </div>
         </section>
@@ -903,7 +904,7 @@
         <section class="cta">
             <p><strong>建议后续继续加：</strong>每篇教程详情页、步骤截图、演示文件、视频教程、评论反馈和对应工具入口。</p>
             <a class="btn" href="/tools">去工具中心</a>
-            <a class="btn secondary" href="/support">问平台客服</a>
+            <a class="btn secondary" href="/resources/help">帮助中心</a>
         </section>
     </main>
 
@@ -913,7 +914,6 @@
                 <a href="/terms">用户协议</a>
                 <a href="/privacy">隐私政策</a>
                 <a href="/service">服务协议</a>
-                <a href="/support">平台客服</a>
                 <a href="/tutorial">帮助中心</a>
             </div>
             <div class="site-footer-bottom">
@@ -1318,5 +1318,6 @@
     </script>
 
     <script src="{{ url_for('static', filename='platform-hover-nav.js') }}"></script>
+    <script src="{{ url_for('static', filename='platform-message.js') }}"></script>
 </body>
 </html>

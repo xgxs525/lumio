@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>平台客服 - 序办</title>
+    <title>消息助手 - 序办</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -527,6 +527,7 @@
 
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='platform-hover-nav.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='platform-message.css') }}">
 </head>
 <body>
     <nav class="navbar">
@@ -688,13 +689,13 @@
 
     <main class="page">
         <header class="hero">
-            <h1>平台客服</h1>
+            <h1>消息助手</h1>
             <p>遇到上传失败、拆分结果异常、会员额度、账号登录或模板下载问题，可以在这里提交工单。</p>
         </header>
         <section class="support-grid">
             <article class="card">
                 <span class="badge">在线支持</span>
-                <h2>工作日客服</h2>
+                <h2>工作日支持</h2>
                 <p>服务时间：周一至周五 9:00-18:00。紧急问题建议附上文件类型、操作页面和错误提示。</p>
             </article>
             <article class="card">
@@ -711,13 +712,13 @@
         <section class="ticket">
             <div>
                 <h2>提交问题</h2>
-                <p>当前为前端演示表单，后续可以接入后台工单系统、在线客服或邮件通知。</p>
+                <p>当前为前端演示表单，后续可以接入后台工单系统、在线支持或邮件通知。</p>
             </div>
             <div class="form-grid">
                 <input type="text" placeholder="你的称呼">
                 <input type="text" placeholder="手机号或邮箱">
                 <textarea placeholder="请描述你遇到的问题，例如：在哪个页面、上传什么格式文件、出现什么提示。"></textarea>
-                <button class="btn" type="button" id="ticket-submit">提交客服工单</button>
+                <button class="btn" type="button" id="ticket-submit">提交支持工单</button>
             </div>
         </section>
     </main>
@@ -727,7 +728,6 @@
                 <a href="/terms">用户协议</a>
                 <a href="/privacy">隐私政策</a>
                 <a href="/service">服务协议</a>
-                <a href="/support">平台客服</a>
                 <a href="/tutorial">帮助中心</a>
             </div>
             <div class="site-footer-bottom">
@@ -747,7 +747,7 @@
             setTimeout(() => toast.classList.remove('show'), 2200);
         }
         document.getElementById('ticket-submit').addEventListener('click', () => {
-            showToast('客服工单接口待接入，当前为前端演示');
+            showToast('支持工单接口待接入，当前为前端演示');
         });
         document.querySelectorAll('.tools-menu-trigger').forEach(trigger => {
             trigger.addEventListener('click', event => {
@@ -1127,5 +1127,6 @@
     </script>
 
     <script src="{{ url_for('static', filename='platform-hover-nav.js') }}"></script>
+    <script src="{{ url_for('static', filename='platform-message.js') }}"></script>
 </body>
 </html>
