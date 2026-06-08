@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
-序办 - FastAPI Web服务
+序光 - FastAPI Web服务
 """
 
 import os
@@ -25,7 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from excel_splitter import ExcelSplitter, setup_logging
 
 app = FastAPI(
-    title='序办',
+    title='序光',
     description='AI 表格协作办公平台',
     version='1.0.0',
 )
@@ -729,7 +729,7 @@ def render_resource_page(title, subtitle, sections):
 def resource_cases():
     return render_resource_page(
         '案例中心',
-        '展示电商、财务、销售、人事、仓储和团队协作中的真实办公场景，帮助用户理解序办如何落地到业务流程。',
+        '展示电商、财务、销售、人事、仓储和团队协作中的真实办公场景，帮助用户理解序光如何落地到业务流程。',
         [
             ('电商运营案例', '按地区拆分订单、清洗商品数据、汇总销售日报，并沉淀为团队可复用模板。'),
             ('财务办公案例', '整理账单、费用明细、发票资料和对账差异，减少重复核对工作。'),
@@ -755,7 +755,7 @@ def resource_help():
 def resource_updates():
     return render_resource_page(
         '更新日志',
-        '记录序办产品能力、页面体验和平台服务的近期更新。',
+        '记录序光产品能力、页面体验和平台服务的近期更新。',
         [
             ('平台导航升级', '顶部菜单升级为首页、产品、解决方案、模板中心、资源中心、价格、工作台。'),
             ('云盘与知识库', '新增云盘文件管理、知识库新建、知识库设置和团队资料沉淀入口。'),
@@ -781,7 +781,7 @@ def resource_api():
 def resource_security():
     return render_resource_page(
         '安全与合规',
-        '说明序办在数据安全、权限管理、文件隔离和企业合规方面的设计。',
+        '说明序光在数据安全、权限管理、文件隔离和企业合规方面的设计。',
         [
             ('数据隔离', '上传文件、处理结果、模板和知识库资料按账号和团队空间隔离保存。'),
             ('权限管理', '团队成员可按角色控制文件、知识库、模板和数据看板的查看与编辑权限。'),
@@ -794,9 +794,9 @@ def resource_security():
 def resource_whitepaper():
     return render_resource_page(
         '产品白皮书',
-        '系统介绍序办的平台定位、核心能力、行业方案和企业部署思路。',
+        '系统介绍序光的平台定位、核心能力、行业方案和企业部署思路。',
         [
-            ('平台定位', '序办面向企业办公场景，连接智能表格、文档、云盘、知识库、自动化和数据分析。'),
+            ('平台定位', '序光面向企业办公场景，连接智能表格、文档、云盘、知识库、自动化和数据分析。'),
             ('核心能力', '覆盖文件处理、表格清洗、自动报表、模板复用、团队协作和业务流程自动化。'),
             ('行业方案', '支持电商运营、财务、人事、销售、仓储、内容团队和企业数据分析场景。'),
             ('部署规划', '个人和团队可使用在线版，企业可按需规划 API 接入、权限体系和私有化部署。')
@@ -838,7 +838,7 @@ def terms():
     return render_template(
         'legal.html',
         title='用户协议',
-        subtitle='使用序办前，请了解账号、文件处理、模板下载和平台服务规则。',
+        subtitle='使用序光前，请了解账号、文件处理、模板下载和平台服务规则。',
         sections=[
             ('账号与使用', '用户应妥善保管账号信息，不得使用平台上传、处理或传播违法违规内容。'),
             ('文件处理', '平台提供 AI 办公助手、文件上传、表格处理、清洗、转换和模板相关功能，处理结果请用户自行核对后使用。'),
@@ -1080,7 +1080,7 @@ def get_columns(data: dict | None = Body(default=None)):
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("序办 FastAPI Web服务")
+    print("序光 FastAPI Web服务")
     print("=" * 50)
     print("请访问: http://localhost:5000")
     print("按 Ctrl+C 停止服务")

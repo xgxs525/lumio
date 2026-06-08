@@ -27,6 +27,16 @@ instance/
 uploads/
 output/
 outputs/
+backend/storage/
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+
+# Env
+.env
 
 # OS/editor noise
 .DS_Store

@@ -1,6 +1,6 @@
-import os
+﻿import os
 
-templates_dir = r"I:\Xuguang-NexaOffice\templates"
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
 # 工具页面内容
 tool_page = '''<!DOCTYPE html>
@@ -8,7 +8,7 @@ tool_page = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} - 序办</title>
+    <title>{title} - 序光</title>
     <style>
         * {{
             margin: 0;
@@ -237,7 +237,7 @@ tool_page = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -304,7 +304,7 @@ user_page = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} - 序办</title>
+    <title>{title} - 序光</title>
     <style>
         * {{
             margin: 0;
@@ -553,7 +553,7 @@ user_page = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>

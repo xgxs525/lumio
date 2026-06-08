@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 # 基础模板内容
 base_template = '''<!DOCTYPE html>
@@ -6,7 +6,7 @@ base_template = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} - 序办</title>
+    <title>{title} - 序光</title>
     <style>
         * {{
             margin: 0;
@@ -139,7 +139,7 @@ base_template = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -195,8 +195,8 @@ pages = [
     ('clean.html', '数据清洗', '🧹', '智能清洗Excel数据'),
     ('convert.html', '格式转换', '🔄', 'Excel格式相互转换'),
     ('formulas.html', '公式大全', '🔢', 'Excel常用公式速查'),
-    ('home.html', '首页', '🏠', '序办'),
-    ('index.html', '首页', '🏠', '序办'),
+    ('home.html', '首页', '🏠', '序光'),
+    ('index.html', '首页', '🏠', '序光'),
     ('pricing.html', '定价', '💰', '查看会员价格和权益'),
     ('split.html', '文件拆分', '✂️', 'Excel文件智能拆分'),
     ('statistics.html', '数据分析', '📊', '专业的数据统计分析'),
@@ -210,7 +210,7 @@ pages = [
     ('user_templates.html', '我的模板', '📄', '您保存的Excel模板'),
 ]
 
-templates_dir = r'I:\Xuguang-NexaOffice\templates'
+templates_dir = os.path.join(os.path.dirname(__file__), 'templates')
 
 for filename, title, icon, description in pages:
     filepath = os.path.join(templates_dir, filename)

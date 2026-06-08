@@ -1,7 +1,7 @@
-import os
+﻿import os
 import re
 
-templates_dir = r"I:\Xuguang-NexaOffice\templates"
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
 # 获取所有HTML文件
 html_files = [f for f in os.listdir(templates_dir) if f.endswith('.html')]

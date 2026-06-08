@@ -1,6 +1,6 @@
-import os
+﻿import os
 
-templates_dir = r"I:\Xuguang-NexaOffice\templates"
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
 # 用户文件管理页面
 user_files_content = '''<!DOCTYPE html>
@@ -8,7 +8,7 @@ user_files_content = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的文件 - 序办</title>
+    <title>我的文件 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -271,7 +271,7 @@ user_files_content = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -371,7 +371,7 @@ user_history_content = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>处理记录 - 序办</title>
+    <title>处理记录 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -582,7 +582,7 @@ user_history_content = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -680,7 +680,7 @@ user_templates_content = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的模板 - 序办</title>
+    <title>我的模板 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -908,7 +908,7 @@ user_templates_content = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -999,7 +999,7 @@ user_settings_content = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>账号设置 - 序办</title>
+    <title>账号设置 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -1217,7 +1217,7 @@ user_settings_content = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -1319,7 +1319,7 @@ def generate_tool_page(title, icon, description, features):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} - 序办</title>
+    <title>{title} - 序光</title>
     <style>
         * {{
             margin: 0;
@@ -1526,7 +1526,7 @@ def generate_tool_page(title, icon, description, features):
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>

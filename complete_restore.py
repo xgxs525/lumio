@@ -1,6 +1,6 @@
-import os
+﻿import os
 
-templates_dir = r"I:\Xuguang-NexaOffice\templates"
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
 # 完整的用户文件管理页面 - 包含实际的上传、删除、下载功能
 user_files_complete = '''<!DOCTYPE html>
@@ -8,7 +8,7 @@ user_files_complete = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的文件 - 序办</title>
+    <title>我的文件 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -385,7 +385,7 @@ user_files_complete = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -637,7 +637,7 @@ user_history_complete = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>处理记录 - 序办</title>
+    <title>处理记录 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -955,7 +955,7 @@ user_history_complete = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>
@@ -1153,7 +1153,7 @@ user_member_complete = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>会员中心 - 序办</title>
+    <title>会员中心 - 序光</title>
     <style>
         * {
             margin: 0;
@@ -1523,7 +1523,7 @@ user_member_complete = '''<!DOCTYPE html>
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">📊 序办</div>
+        <div class="logo">📊 序光</div>
         <div class="nav-links">
             <div class="nav-item"><a href="/">首页</a></div>
             <div class="nav-item"><a href="/ai">AI助手</a></div>

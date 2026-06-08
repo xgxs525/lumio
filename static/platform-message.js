@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     const existing = document.querySelector('[data-xg-message-widget]');
     if (existing) return;
 
@@ -24,11 +24,11 @@
             <span class="xg-message-launcher-label">消息</span>
             <span class="xg-message-launcher-dot" aria-hidden="true"></span>
         </button>
-        <section class="xg-message-shell" id="xg-message-panel" aria-label="序办消息助手">
+        <section class="xg-message-shell" id="xg-message-panel" aria-label="序光消息助手">
             <header class="xg-message-header">
                 <div class="xg-message-brand">
                     <span class="xg-message-brand-mark" aria-hidden="true">序</span>
-                    <span>序办消息助手</span>
+                    <span>序光消息助手</span>
                 </div>
                 <div class="xg-message-actions">
                     <button class="xg-message-text-btn" type="button" data-xg-message-minimize>收起</button>
@@ -40,7 +40,7 @@
                 <div class="xg-message-note">温馨提示：这里是演示消息入口，后续可接入工单、在线消息和团队通知。请勿在演示环境提交敏感信息。</div>
                 <article class="xg-message-card">
                     <h3>Hi，你好</h3>
-                    <p>我是序办助手，可以解答上传、模板、账号、价格、数据处理和工作台相关问题。</p>
+                    <p>我是序光助手，可以解答上传、模板、账号、价格、数据处理和工作台相关问题。</p>
                     ${quickQuestions.map(item => `
                         <button class="xg-message-question" type="button" data-xg-message-fill="${escapeHtml(item)}">
                             <span>${escapeHtml(item)}</span>

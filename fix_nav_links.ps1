@@ -1,4 +1,4 @@
-$files = Get-ChildItem -Path "I:\Xuguang-NexaOffice\templates" -Filter "*.html" -Recurse
+﻿$files = Get-ChildItem -Path (Join-Path $PSScriptRoot "templates") -Filter "*.html" -Recurse
 
 foreach ($file in $files) {
     $content = Get-Content $file.FullName -Raw
