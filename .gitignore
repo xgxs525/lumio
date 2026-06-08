@@ -1,10 +1,23 @@
-# Python caches
+# =========================================================================
+# 1. Python & Backend (Flask, Pytest, Ruff)
+# =========================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.prof
+.pstats
+
+# Python build & distribution
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
 
 # Virtual environments
 .venv/
@@ -12,34 +25,52 @@ venv/
 env/
 ENV/
 
-# Local configuration and secrets
-.env
-.env.*
-!.env.example
-
 # Flask/runtime files
 instance/
 *.log
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
 
-# User uploads and generated processing results
+# =========================================================================
+# 2. Node / Next.js (Frontend)
+# =========================================================================
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# =========================================================================
+# 3. Environment & Secrets (Crucial)
+# =========================================================================
+.env
+.env.*
+!.env.example
+frontend/.env.local
+
+# =========================================================================
+# 4. Project Specific (Uploads & Outputs)
+# =========================================================================
 uploads/
 output/
 outputs/
 backend/storage/
 
-# Node / Next.js
-node_modules/
-frontend/.next/
-frontend/out/
-frontend/.env.local
-
-# Env
-.env
-
-# OS/editor noise
+# =========================================================================
+# 5. OS & Editor Noise (macOS, Windows, IDEs)
+# =========================================================================
 .DS_Store
 Thumbs.db
+
+# IDEs
 .idea/
 .vscode/
+*.iws
+*.iml
+*.ipr
