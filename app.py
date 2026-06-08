@@ -1,33 +1,68 @@
 # -*- coding: utf-8 -*-
 """
-序办 - Flask Web服务
+序办 - FastAPI Web服务
 """
 
 import os
+import json
+import re
+import shutil
 import sys
-from datetime import datetime
-from pathlib import Path
-from flask import Flask, request, jsonify, send_file, render_template, redirect
-from werkzeug.security import safe_join
-from werkzeug.utils import secure_filename
 import threading
 import uuid
+from datetime import datetime
+from io import BytesIO
+from pathlib import Path
+from urllib.parse import quote
+
+import uvicorn
+from fastapi import Body, FastAPI, File, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # 导入Excel拆分器
 from excel_splitter import ExcelSplitter, setup_logging
 
-app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 限制500MB
-app.config['UPLOAD_FOLDER'] = './uploads'
-app.config['OUTPUT_FOLDER'] = './outputs'
-app.config['TEMPLATE_FOLDER'] = './uploads/templates'
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # 禁用缓存
-app.jinja_env.cache = {}  # 禁用Jinja2缓存
+app = FastAPI(
+    title='序办',
+    description='AI 表格协作办公平台',
+    version='1.0.0',
+)
+
+MAX_CONTENT_LENGTH = 500 * 1024 * 1024
+UPLOAD_FOLDER = './uploads'
+OUTPUT_FOLDER = './outputs'
+TEMPLATE_FOLDER = './uploads/templates'
+TASK_STATE_FOLDER = './outputs/_tasks'
+
+app.mount('/static', StaticFiles(directory='static'), name='static')
+
+template_env = Environment(
+    loader=FileSystemLoader('templates'),
+    autoescape=select_autoescape(['html', 'xml']),
+    cache_size=0,
+)
+
+
+def template_url_for(endpoint: str, **values) -> str:
+    if endpoint == 'static':
+        filename = values.get('filename') or values.get('path') or ''
+        url = f"/static/{str(filename).lstrip('/')}"
+        version = values.get('v')
+        if version:
+            url = f"{url}?v={quote(str(version))}"
+        return url
+    return f"/{endpoint.lstrip('/')}"
+
+
+template_env.globals['url_for'] = template_url_for
 
 # 确保目录存在
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
-os.makedirs(app.config['TEMPLATE_FOLDER'], exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+os.makedirs(TEMPLATE_FOLDER, exist_ok=True)
+os.makedirs(TASK_STATE_FOLDER, exist_ok=True)
 
 # 日志配置
 logger = setup_logging('INFO')
@@ -44,9 +79,115 @@ ALLOWED_UPLOAD_EXTENSIONS = {
 }
 
 
-def get_json_payload():
-    """获取JSON请求体，避免空请求体导致AttributeError。"""
-    return request.get_json(silent=True) or {}
+@app.middleware('http')
+async def limit_request_body(request: Request, call_next):
+    content_length = request.headers.get('content-length')
+    try:
+        body_size = int(content_length or 0)
+    except ValueError:
+        body_size = 0
+
+    if body_size > MAX_CONTENT_LENGTH:
+        return JSONResponse(
+            {'success': False, 'error': '文件过大，最大支持 500MB'},
+            status_code=413
+        )
+    return await call_next(request)
+
+
+def render_template(template_name: str, **context) -> HTMLResponse:
+    html = template_env.get_template(template_name).render(**context)
+    return HTMLResponse(html, headers={'Cache-Control': 'no-store'})
+
+
+def jsonify(payload, status_code: int = 200) -> JSONResponse:
+    return JSONResponse(content=payload, status_code=status_code)
+
+
+def redirect(url: str, code: int = 302) -> RedirectResponse:
+    return RedirectResponse(url=url, status_code=code)
+
+
+def send_file(file, as_attachment: bool = False, mimetype: str | None = None, download_name: str | None = None):
+    if isinstance(file, (str, os.PathLike, Path)):
+        path = Path(file)
+        filename = download_name or (path.name if as_attachment else None)
+        return FileResponse(str(path), media_type=mimetype, filename=filename)
+
+    headers = {}
+    if as_attachment:
+        filename = download_name or 'download'
+        headers['Content-Disposition'] = f"attachment; filename*=UTF-8''{quote(filename)}"
+    return StreamingResponse(file, media_type=mimetype or 'application/octet-stream', headers=headers)
+
+
+def safe_join(base_dir: str, filename: str) -> str | None:
+    try:
+        base_path = Path(base_dir).resolve()
+        target_path = (base_path / filename).resolve()
+        target_path.relative_to(base_path)
+    except (TypeError, ValueError, OSError):
+        return None
+    return str(target_path)
+
+
+def secure_filename(filename: str) -> str:
+    name = Path(filename).name
+    name = re.sub(r'[^\w.\-]+', '_', name, flags=re.UNICODE).strip('._')
+    return name[:180]
+
+
+def save_upload_file(upload_file: UploadFile, target_path: str | Path) -> None:
+    with open(target_path, 'wb') as buffer:
+        shutil.copyfileobj(upload_file.file, buffer)
+
+
+def task_state_path(task_id: str) -> Path:
+    return Path(TASK_STATE_FOLDER) / f'{task_id}.json'
+
+
+def persist_task(task_id: str) -> None:
+    task = tasks.get(task_id)
+    if not task:
+        return
+
+    path = task_state_path(task_id)
+    tmp_path = path.with_suffix('.json.tmp')
+    try:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(task, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+    except Exception:
+        logger.exception(f'保存任务状态失败: {task_id}')
+
+
+def get_task(task_id: str):
+    task = tasks.get(task_id)
+    if task:
+        return task
+
+    if not re.fullmatch(r'[a-f0-9]{32}', task_id or ''):
+        return None
+
+    path = task_state_path(task_id)
+    if not path.exists():
+        return None
+
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            task = json.load(f)
+        tasks[task_id] = task
+        return task
+    except Exception:
+        logger.exception(f'读取任务状态失败: {task_id}')
+        return None
+
+
+def update_task(task_id: str, **updates):
+    task = tasks.setdefault(task_id, {})
+    task.update(updates)
+    persist_task(task_id)
+    return task
 
 
 def coerce_positive_int(value, field_name: str) -> int:
@@ -65,7 +206,7 @@ def coerce_positive_int(value, field_name: str) -> int:
 def is_uploaded_file(file_path: str) -> bool:
     """限制Web接口只能处理上传目录中的文件。"""
     try:
-        upload_dir = Path(app.config['UPLOAD_FOLDER']).resolve()
+        upload_dir = Path(UPLOAD_FOLDER).resolve()
         target_path = Path(file_path).resolve()
         target_path.relative_to(upload_dir)
     except (TypeError, ValueError, OSError):
@@ -77,7 +218,7 @@ def is_uploaded_file(file_path: str) -> bool:
 def run_split_task(task_id: str, input_path: str, output_dir: str, split_type: str, **kwargs):
     """在后台线程中执行拆分任务"""
     try:
-        tasks[task_id]['status'] = 'running'
+        update_task(task_id, status='running', message='开始拆分...')
         tasks[task_id]['message'] = '开始拆分...'
         
         if split_type == 'column':
@@ -108,47 +249,49 @@ def run_split_task(task_id: str, input_path: str, output_dir: str, split_type: s
         tasks[task_id]['files'] = result.files_created
         tasks[task_id]['files_count'] = result.files_count
         tasks[task_id]['rows_processed'] = result.rows_processed
+        persist_task(task_id)
         
         if not result.success:
             tasks[task_id]['error'] = result.error_message
+            persist_task(task_id)
             
     except Exception as e:
         tasks[task_id]['status'] = 'failed'
         tasks[task_id]['error'] = str(e)
+        persist_task(task_id)
         logger.exception(f"任务 {task_id} 执行失败")
 
 
-@app.route('/')
+@app.get('/')
 def index():
     """首页（欢迎页）"""
     return render_template('home.html')
 
-@app.route('/tutorial')
+@app.get('/tutorial')
 def tutorial():
     """教程页面"""
     return render_template('tutorial.html')
 
 
-@app.route('/api/upload', methods=['POST'])
-def upload_file():
+@app.post('/api/upload')
+def upload_file(file: UploadFile | None = File(default=None)):
     """上传办公文件"""
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'error': '没有文件'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'success': False, 'error': '文件名为空'}), 400
+    if file is None:
+        return jsonify({'success': False, 'error': '没有文件'}, status_code=400)
+
+    if not file.filename:
+        return jsonify({'success': False, 'error': '文件名为空'}, status_code=400)
     
     # 检查文件扩展名（使用原始文件名检查）
     original_filename = file.filename
     ext = os.path.splitext(original_filename)[1].lower()
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
-        return jsonify({'success': False, 'error': f'不支持的文件格式: {ext}'}), 400
+        return jsonify({'success': False, 'error': f'不支持的文件格式: {ext}'}, status_code=400)
     
     # 使用UUID生成唯一文件名，避免中文文件名问题
     unique_filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-    file.save(file_path)
+    file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+    save_upload_file(file, file_path)
     
     logger.info(f"文件上传成功: {file_path}")
     
@@ -160,10 +303,10 @@ def upload_file():
     })
 
 
-@app.route('/api/preview', methods=['POST'])
-def preview_split():
+@app.post('/api/preview')
+def preview_split(data: dict | None = Body(default=None)):
     """预览拆分结果（不实际拆分，只计算会生成多少个文件）"""
-    data = get_json_payload()
+    data = data or {}
     
     input_path = data.get('filepath')
     split_type = data.get('splitType', data.get('split_type'))  # column, row_count, sheet
@@ -172,25 +315,25 @@ def preview_split():
     try:
         header_row = coerce_positive_int(data.get('headerRow', data.get('header_row', 1)), '表头行')
     except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e)}, status_code=400)
     
     if not input_path or not os.path.exists(input_path):
-        return jsonify({'success': False, 'error': '文件不存在'}), 400
+        return jsonify({'success': False, 'error': '文件不存在'}, status_code=400)
 
     if not is_uploaded_file(input_path):
-        return jsonify({'success': False, 'error': '只能处理已上传的文件'}), 400
+        return jsonify({'success': False, 'error': '只能处理已上传的文件'}, status_code=400)
 
     if split_type not in ALLOWED_SPLIT_TYPES:
-        return jsonify({'success': False, 'error': '未知拆分类型'}), 400
+        return jsonify({'success': False, 'error': '未知拆分类型'}, status_code=400)
     
     if split_type == 'column' and not column:
-        return jsonify({'success': False, 'error': '请指定拆分列'}), 400
+        return jsonify({'success': False, 'error': '请指定拆分列'}, status_code=400)
     
     if split_type == 'row_count':
         try:
             rows_per_file = coerce_positive_int(rows_per_file, '每文件行数')
         except ValueError as e:
-            return jsonify({'success': False, 'error': str(e)}), 400
+            return jsonify({'success': False, 'error': str(e)}, status_code=400)
     
     try:
         preview_result = {'success': True, 'splitType': split_type}
@@ -212,7 +355,7 @@ def preview_split():
                         break
                 
                 if col_idx is None:
-                    return jsonify({'success': False, 'error': f'未找到列: {column}'}), 400
+                    return jsonify({'success': False, 'error': f'未找到列: {column}'}, status_code=400)
                 
                 # 统计每个值的行数
                 value_counts = {}
@@ -247,7 +390,7 @@ def preview_split():
                         break
                 
                 if col_idx is None:
-                    return jsonify({'success': False, 'error': f'未找到列: {column}'}), 400
+                    return jsonify({'success': False, 'error': f'未找到列: {column}'}, status_code=400)
                 
                 # 统计每个值的行数
                 value_counts = {}
@@ -345,13 +488,13 @@ def preview_split():
         
     except Exception as e:
         logger.exception(f"预览失败: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}, status_code=500)
 
 
-@app.route('/api/split', methods=['POST'])
-def split_file():
+@app.post('/api/split')
+def split_file(data: dict | None = Body(default=None)):
     """执行拆分任务"""
-    data = get_json_payload()
+    data = data or {}
     
     input_path = data.get('filepath')
     split_type = data.get('splitType', data.get('split_type'))  # column, row_count, sheet
@@ -360,31 +503,31 @@ def split_file():
     try:
         header_row = coerce_positive_int(data.get('headerRow', data.get('header_row', 1)), '表头行')
     except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e)}, status_code=400)
     
     if not input_path or not os.path.exists(input_path):
-        return jsonify({'success': False, 'error': '文件不存在'}), 400
+        return jsonify({'success': False, 'error': '文件不存在'}, status_code=400)
 
     if not is_uploaded_file(input_path):
-        return jsonify({'success': False, 'error': '只能处理已上传的文件'}), 400
+        return jsonify({'success': False, 'error': '只能处理已上传的文件'}, status_code=400)
 
     if split_type not in ALLOWED_SPLIT_TYPES:
-        return jsonify({'success': False, 'error': '未知拆分类型'}), 400
+        return jsonify({'success': False, 'error': '未知拆分类型'}, status_code=400)
     
     if split_type == 'column' and not column:
-        return jsonify({'success': False, 'error': '请指定拆分列'}), 400
+        return jsonify({'success': False, 'error': '请指定拆分列'}, status_code=400)
     
     if split_type == 'row_count':
         try:
             rows_per_file = coerce_positive_int(rows_per_file, '每文件行数')
         except ValueError as e:
-            return jsonify({'success': False, 'error': str(e)}), 400
+            return jsonify({'success': False, 'error': str(e)}, status_code=400)
     
     # 创建任务
     task_id = uuid.uuid4().hex
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = os.path.join(
-        app.config['OUTPUT_FOLDER'],
+        OUTPUT_FOLDER,
         f"{Path(input_path).stem}_split_{timestamp}"
     )
     os.makedirs(output_dir, exist_ok=True)
@@ -398,6 +541,7 @@ def split_file():
         'files': [],
         'success': False
     }
+    persist_task(task_id)
     
     # 启动后台任务
     thread = threading.Thread(
@@ -415,47 +559,47 @@ def split_file():
     })
 
 
-@app.route('/api/task/<task_id>')
+@app.get('/api/task/{task_id}')
 def get_task_status(task_id):
     """获取任务状态"""
-    if task_id not in tasks:
-        return jsonify({'success': False, 'error': '任务不存在'}), 404
+    task = get_task(task_id)
+    if task is None:
+        return jsonify({'success': False, 'error': '任务不存在'}, status_code=404)
     
     return jsonify({
         'success': True,
-        'task': tasks[task_id]
+        'task': task
     })
 
 
-@app.route('/api/download/<task_id>/<filename>')
+@app.get('/api/download/{task_id}/{filename}')
 def download_file(task_id, filename):
     """下载生成的文件"""
-    if task_id not in tasks:
-        return jsonify({'success': False, 'error': '任务不存在'}), 404
+    task = get_task(task_id)
+    if task is None:
+        return jsonify({'success': False, 'error': '任务不存在'}, status_code=404)
     
-    task = tasks[task_id]
     file_path = safe_join(task['output_dir'], filename)
     
     if file_path is None or not os.path.isfile(file_path):
-        return jsonify({'success': False, 'error': '文件不存在'}), 404
+        return jsonify({'success': False, 'error': '文件不存在'}, status_code=404)
     
     return send_file(file_path, as_attachment=True)
 
 
-@app.route('/api/download-all/<task_id>')
+@app.get('/api/download-all/{task_id}')
 def download_all_files(task_id):
     """打包下载所有生成的文件"""
-    if task_id not in tasks:
-        return jsonify({'success': False, 'error': '任务不存在'}), 404
+    task = get_task(task_id)
+    if task is None:
+        return jsonify({'success': False, 'error': '任务不存在'}, status_code=404)
     
     import zipfile
-    from io import BytesIO
     
-    task = tasks[task_id]
     output_dir = task['output_dir']
     
     if not task.get('files'):
-        return jsonify({'success': False, 'error': '没有生成的文件'}), 400
+        return jsonify({'success': False, 'error': '没有生成的文件'}, status_code=400)
     
     # 创建ZIP文件
     memory_file = BytesIO()
@@ -477,99 +621,99 @@ def download_all_files(task_id):
 
 
 # 工具中心路由
-@app.route('/tools')
+@app.get('/tools')
 def tools():
     return render_template('tools.html')
 
-@app.route('/split')
+@app.get('/split')
 def split():
     return render_template('index.html')
 
-@app.route('/tools/split')
+@app.get('/tools/split')
 def tool_split():
     return render_template('split.html')
 
-@app.route('/dedup')
+@app.get('/dedup')
 def dedup():
     return render_template('dedup.html')
 
-@app.route('/convert')
+@app.get('/convert')
 def convert():
     return render_template('convert.html')
 
-@app.route('/beautify')
+@app.get('/beautify')
 def beautify():
     return render_template('beautify.html')
 
-@app.route('/formulas')
+@app.get('/formulas')
 def formulas():
     return render_template('formulas.html')
 
-@app.route('/statistics')
+@app.get('/statistics')
 def statistics():
     return render_template('statistics.html')
 
-@app.route('/charts')
+@app.get('/charts')
 def charts():
     return render_template('charts.html')
 
-@app.route('/batch')
+@app.get('/batch')
 def batch():
     return render_template('batch.html')
 
-@app.route('/clean')
+@app.get('/clean')
 def clean():
     return render_template('clean.html')
 
-@app.route('/tools/clean')
+@app.get('/tools/clean')
 def tool_clean():
     return render_template('clean.html')
 
-@app.route('/tools/dedup')
+@app.get('/tools/dedup')
 def tool_dedup():
     return render_template('dedup.html')
 
-@app.route('/tools/convert')
+@app.get('/tools/convert')
 def tool_convert():
     return render_template('convert.html')
 
-@app.route('/tools/beautify')
+@app.get('/tools/beautify')
 def tool_beautify():
     return render_template('beautify.html')
 
-@app.route('/tools/formulas')
+@app.get('/tools/formulas')
 def tool_formulas():
     return render_template('formulas.html')
 
-@app.route('/tools/statistics')
+@app.get('/tools/statistics')
 def tool_statistics():
     return render_template('statistics.html')
 
-@app.route('/tools/charts')
+@app.get('/tools/charts')
 def tool_charts():
     return render_template('charts.html')
 
-@app.route('/tools/batch')
+@app.get('/tools/batch')
 def tool_batch():
     return render_template('batch.html')
 
 # AI 办公助手路由
-@app.route('/ai')
+@app.get('/ai')
 def ai_excel():
     return render_template('ai.html')
 
 # 模板中心路由
-@app.route('/templates')
+@app.get('/templates')
 def templates():
     return render_template('templates.html')
 
 # 解决方案路由
-@app.route('/solutions')
+@app.get('/solutions')
 def solutions():
     return render_template('solutions.html')
 
 # 资源中心路由
-@app.route('/resources')
+@app.get('/resources')
 def resources():
     return render_template('tutorial.html')
 
@@ -581,7 +725,7 @@ def render_resource_page(title, subtitle, sections):
         sections=sections
     )
 
-@app.route('/resources/cases')
+@app.get('/resources/cases')
 def resource_cases():
     return render_resource_page(
         '案例中心',
@@ -594,7 +738,7 @@ def resource_cases():
         ]
     )
 
-@app.route('/resources/help')
+@app.get('/resources/help')
 def resource_help():
     return render_resource_page(
         '帮助文档',
@@ -607,7 +751,7 @@ def resource_help():
         ]
     )
 
-@app.route('/resources/updates')
+@app.get('/resources/updates')
 def resource_updates():
     return render_resource_page(
         '更新日志',
@@ -620,7 +764,7 @@ def resource_updates():
         ]
     )
 
-@app.route('/resources/api')
+@app.get('/resources/api')
 def resource_api():
     return render_resource_page(
         'API 文档',
@@ -633,7 +777,7 @@ def resource_api():
         ]
     )
 
-@app.route('/resources/security')
+@app.get('/resources/security')
 def resource_security():
     return render_resource_page(
         '安全与合规',
@@ -646,7 +790,7 @@ def resource_security():
         ]
     )
 
-@app.route('/resources/whitepaper')
+@app.get('/resources/whitepaper')
 def resource_whitepaper():
     return render_resource_page(
         '产品白皮书',
@@ -659,37 +803,37 @@ def resource_whitepaper():
         ]
     )
 
-@app.route('/knowledge')
+@app.get('/knowledge')
 def knowledge():
     return render_template('knowledge.html')
 
-@app.route('/drive')
+@app.get('/drive')
 def drive():
     return render_template('drive.html')
 
 # 价格路由
-@app.route('/pricing')
+@app.get('/pricing')
 def pricing():
     return render_template('pricing.html')
 
 # 登录路由
-@app.route('/login')
+@app.get('/login')
 def login():
     return render_template('login.html')
 
-@app.route('/login/more')
+@app.get('/login/more')
 def login_more():
     return render_template('login_more.html')
 
-@app.route('/login/other')
+@app.get('/login/other')
 def login_other():
     return render_template('login_other.html')
 
-@app.route('/register')
+@app.get('/register')
 def register():
     return render_template('register.html')
 
-@app.route('/terms')
+@app.get('/terms')
 def terms():
     return render_template(
         'legal.html',
@@ -703,7 +847,7 @@ def terms():
         ]
     )
 
-@app.route('/privacy')
+@app.get('/privacy')
 def privacy():
     return render_template(
         'legal.html',
@@ -717,7 +861,7 @@ def privacy():
         ]
     )
 
-@app.route('/service')
+@app.get('/service')
 def service_terms():
     return render_template(
         'legal.html',
@@ -731,28 +875,28 @@ def service_terms():
         ]
     )
 
-@app.route('/support')
+@app.get('/support')
 def support():
     return redirect('/resources/help', code=302)
 
 # 用户中心路由
-@app.route('/workbench')
+@app.get('/workbench')
 def workbench():
     return render_template('user_history.html')
 
-@app.route('/console')
+@app.get('/console')
 def console():
     return redirect('/workbench', code=302)
 
-@app.route('/user/files')
+@app.get('/user/files')
 def user_files():
     return render_template('user_files.html')
 
-@app.route('/user/history')
+@app.get('/user/history')
 def user_history():
     return render_template('user_history.html')
 
-@app.route('/user/templates')
+@app.get('/user/templates')
 def user_templates():
     return render_template('user_templates.html')
 
@@ -769,9 +913,9 @@ def serialize_template_file(path: Path):
         'downloadUrl': f'/api/user/templates/{path.name}/download'
     }
 
-@app.route('/api/user/templates', methods=['GET'])
+@app.get('/api/user/templates')
 def api_list_user_templates():
-    template_dir = Path(app.config['TEMPLATE_FOLDER'])
+    template_dir = Path(TEMPLATE_FOLDER)
     files = [
         serialize_template_file(path)
         for path in template_dir.iterdir()
@@ -780,93 +924,92 @@ def api_list_user_templates():
     files.sort(key=lambda item: item['savedAt'], reverse=True)
     return jsonify({'success': True, 'templates': files})
 
-@app.route('/api/user/templates/upload', methods=['POST'])
-def api_upload_user_template():
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'error': '没有选择模板文件'}), 400
+@app.post('/api/user/templates/upload')
+def api_upload_user_template(file: UploadFile | None = File(default=None)):
+    if file is None:
+        return jsonify({'success': False, 'error': '没有选择模板文件'}, status_code=400)
 
-    file = request.files['file']
     if not file.filename:
-        return jsonify({'success': False, 'error': '模板文件名为空'}), 400
+        return jsonify({'success': False, 'error': '模板文件名为空'}, status_code=400)
 
     original_filename = file.filename
     ext = Path(original_filename).suffix.lower()
     if ext not in ALLOWED_TEMPLATE_EXTENSIONS:
-        return jsonify({'success': False, 'error': f'不支持的模板格式: {ext}'}), 400
+        return jsonify({'success': False, 'error': f'不支持的模板格式: {ext}'}, status_code=400)
 
     safe_name = secure_filename(original_filename) or f'template{ext}'
     unique_name = f'{uuid.uuid4().hex}_{safe_name}'
-    target_path = Path(app.config['TEMPLATE_FOLDER']) / unique_name
-    file.save(target_path)
+    target_path = Path(TEMPLATE_FOLDER) / unique_name
+    save_upload_file(file, target_path)
 
     logger.info(f"用户模板上传成功: {target_path}")
     return jsonify({
         'success': True,
         'template': serialize_template_file(target_path),
-        'folder': str(Path(app.config['TEMPLATE_FOLDER']).resolve())
+        'folder': str(Path(TEMPLATE_FOLDER).resolve())
     })
 
-@app.route('/api/user/templates/<filename>/download')
+@app.get('/api/user/templates/{filename}/download')
 def api_download_user_template(filename):
-    template_dir = Path(app.config['TEMPLATE_FOLDER']).resolve()
+    template_dir = Path(TEMPLATE_FOLDER).resolve()
     target_path = (template_dir / filename).resolve()
     try:
         target_path.relative_to(template_dir)
     except ValueError:
-        return jsonify({'success': False, 'error': '模板路径无效'}), 400
+        return jsonify({'success': False, 'error': '模板路径无效'}, status_code=400)
 
     if not target_path.is_file():
-        return jsonify({'success': False, 'error': '模板不存在'}), 404
+        return jsonify({'success': False, 'error': '模板不存在'}, status_code=404)
 
     return send_file(target_path, as_attachment=True)
 
-@app.route('/api/user/templates/<filename>', methods=['DELETE'])
+@app.delete('/api/user/templates/{filename}')
 def api_delete_user_template(filename):
-    template_dir = Path(app.config['TEMPLATE_FOLDER']).resolve()
+    template_dir = Path(TEMPLATE_FOLDER).resolve()
     target_path = (template_dir / filename).resolve()
     try:
         target_path.relative_to(template_dir)
     except ValueError:
-        return jsonify({'success': False, 'error': '模板路径无效'}), 400
+        return jsonify({'success': False, 'error': '模板路径无效'}, status_code=400)
 
     if not target_path.is_file():
-        return jsonify({'success': False, 'error': '模板不存在'}), 404
+        return jsonify({'success': False, 'error': '模板不存在'}, status_code=404)
 
     target_path.unlink()
     return jsonify({'success': True})
 
-@app.route('/user/member')
+@app.get('/user/member')
 def user_member():
     return render_template('user_member.html')
 
-@app.route('/user/settings')
+@app.get('/user/settings')
 def user_settings():
     return render_template('user_settings.html')
 
-@app.route('/api/columns', methods=['POST'])
-def get_columns():
+@app.post('/api/columns')
+def get_columns(data: dict | None = Body(default=None)):
     """获取Excel文件的列名"""
-    data = get_json_payload()
+    data = data or {}
     filepath = data.get('filepath')
     auto_detect = bool(data.get('auto_detect', data.get('autoDetect', True)))
     try:
         header_row = coerce_positive_int(data.get('header_row', data.get('headerRow', 1)), '表头行')
     except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e)}, status_code=400)
     
     logger.info(f"请求获取列名: filepath={filepath}, header_row={header_row}")
     
     if not filepath:
         logger.error("文件路径为空")
-        return jsonify({'success': False, 'error': '文件路径为空'}), 400
+        return jsonify({'success': False, 'error': '文件路径为空'}, status_code=400)
     
     if not os.path.exists(filepath):
         logger.error(f"文件不存在: {filepath}")
-        return jsonify({'success': False, 'error': f'文件不存在: {filepath}'}), 400
+        return jsonify({'success': False, 'error': f'文件不存在: {filepath}'}, status_code=400)
 
     if not is_uploaded_file(filepath):
         logger.error(f"非上传目录文件: {filepath}")
-        return jsonify({'success': False, 'error': '只能读取已上传文件的列名'}), 400
+        return jsonify({'success': False, 'error': '只能读取已上传文件的列名'}, status_code=400)
     
     try:
         # 只读取表头
@@ -932,15 +1075,14 @@ def get_columns():
 
     except Exception as e:
         logger.exception(f"获取列名失败: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}, status_code=500)
 
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("序办 Web服务")
+    print("序办 FastAPI Web服务")
     print("=" * 50)
     print("请访问: http://localhost:5000")
     print("按 Ctrl+C 停止服务")
     print("=" * 50)
-    # 关闭调试器，避免 Werkzeug interactive console 占用业务路由。
-    app.run(host='0.0.0.0', port=5000, debug=False, use_debugger=False, use_reloader=False)
+    uvicorn.run(app, host='0.0.0.0', port=5000, log_level='info')
