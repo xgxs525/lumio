@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -11,7 +10,7 @@ from app.core.database import Base
 class User(Base):
     __tablename__ = 'users'
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     nickname: Mapped[str] = mapped_column(String(100), default='')
     hashed_password: Mapped[str] = mapped_column(String(255))

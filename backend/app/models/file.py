@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -11,9 +10,9 @@ from app.core.database import Base
 class UploadedFile(Base):
     __tablename__ = 'uploaded_files'
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey('users.id'), nullable=True, index=True
+        Uuid(as_uuid=True), ForeignKey('users.id'), nullable=True, index=True
     )
     original_name: Mapped[str] = mapped_column(String(255))
     storage_key: Mapped[str] = mapped_column(String(512), unique=True, index=True)
