@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
 
     # PostgreSQL
-    database_url: str = 'postgresql+asyncpg://xuguang:xuguang@localhost:5432/xuguang'
+    database_url: str = 'postgresql+asyncpg://lumio:lumio@localhost:5432/lumio'
 
     # Redis
     redis_url: str = 'redis://localhost:6379/0'

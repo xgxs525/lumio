@@ -11,17 +11,25 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Array<Record<string, unknown>>>([]);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadTemplates() {
-    try {
-      const result = await api.listTemplates();
-      setTemplates(result.templates);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败");
-    }
-  }
-
   useEffect(() => {
-    void loadTemplates();
+    let cancelled = false;
+
+    api
+      .listTemplates()
+      .then((result) => {
+        if (!cancelled) {
+          setTemplates(result.templates);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "加载失败");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

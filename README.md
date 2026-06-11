@@ -1,4 +1,4 @@
-﻿# 序光 Workspace
+# lumio
 
 序光是一个 AI 表格协作与办公工具平台，已完成从单体 Jinja2 原型向现代全栈架构的第一阶段迁移。
 
@@ -44,7 +44,7 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-$env:PYTHONPATH="I:\Xuguang-NexaOffice\backend"
+$env:PYTHONPATH="I:\lumio\backend"
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -53,7 +53,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
-$env:PYTHONPATH="I:\Xuguang-NexaOffice\backend"
+$env:PYTHONPATH="I:\lumio\backend"
 celery -A app.core.celery_app.celery_app worker --loglevel=info --pool=solo
 ```
 
