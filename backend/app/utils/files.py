@@ -6,10 +6,11 @@ from pathlib import Path
 ALLOWED_UPLOAD_EXTENSIONS = {
     '.xlsx', '.xls', '.xlsm', '.csv',
     '.doc', '.docx', '.ppt', '.pptx', '.pdf',
-    '.txt', '.md', '.png', '.jpg', '.jpeg',
+    '.txt', '.md', '.json', '.png', '.jpg', '.jpeg',
 }
 ALLOWED_TEMPLATE_EXTENSIONS = {
     '.xlsx', '.xls', '.xlsm', '.csv', '.doc', '.docx', '.ppt', '.pptx', '.pdf', '.txt', '.md',
+    '.png', '.jpg', '.jpeg', '.webp',
 }
 ALLOWED_SPLIT_TYPES = {'column', 'row_count', 'sheet'}
 

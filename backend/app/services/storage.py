@@ -100,6 +100,12 @@ class OSSStorageBackend(StorageBackend):
             return None
         return f'{self.base_url}/{key}'
 
+    def presigned_upload_url(self, key: str, expires: int = 900) -> str:
+        return self.bucket.sign_url('PUT', key, expires)
+
+    def presigned_download_url(self, key: str, expires: int = 900) -> str:
+        return self.bucket.sign_url('GET', key, expires)
+
 
 def get_storage() -> StorageBackend:
     settings = get_settings()

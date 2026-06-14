@@ -1,16 +1,14 @@
-# =========================================================================
-# 1. Python & Backend (Flask, Pytest, Ruff)
-# =========================================================================
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.prof
-.pstats
+*.prof
+*.pstats
 
-# Python build & distribution
+# Python build
 build/
 develop-eggs/
 dist/
@@ -25,7 +23,7 @@ venv/
 env/
 ENV/
 
-# Flask/runtime files
+# Runtime and logs
 instance/
 *.log
 *.sqlite
@@ -33,42 +31,33 @@ instance/
 *.sqlite-wal
 *.sqlite-shm
 
-# =========================================================================
-# 2. Node / Next.js (Frontend)
-# =========================================================================
-node_modules/
-frontend/.next/
-frontend/out/
-frontend/.turbo/
-frontend/.eslintcache
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/.pnpm-debug.log*
-
-# =========================================================================
-# 3. Environment & Secrets (Crucial)
-# =========================================================================
+# Environment and secrets
 .env
 .env.*
 !.env.example
-frontend/.env.local
 
-# =========================================================================
-# 4. Project Specific (Uploads & Outputs)
-# =========================================================================
+# Runtime storage
 uploads/
 output/
 outputs/
 backend/storage/
+backend/backend/
+test_data/
 
-# =========================================================================
-# 5. OS & Editor Noise (macOS, Windows, IDEs)
-# =========================================================================
+# Local requirement extracts
+_architecture_requirement_extract.txt
+_requirement_extract.txt
+
+# Legacy embedded frontend output
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/node_modules/
+frontend/.env.local
+
+# OS and editors
 .DS_Store
 Thumbs.db
-
-# IDEs
 .idea/
 .vscode/
 *.iws

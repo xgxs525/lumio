@@ -11,16 +11,16 @@ class Settings(BaseSettings):
         extra='ignore',
     )
 
-    app_name: str = '序光'
+    app_name: str = 'Lumio 序光'
     app_env: Literal['development', 'staging', 'production'] = 'development'
     debug: bool = True
     api_prefix: str = '/api/v1'
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
 
     # PostgreSQL
-    database_url: str = 'postgresql+psycopg://lumio:lumio@localhost:5432/lumio'
+    database_url: str = 'postgresql+asyncpg://lumio:lumio@localhost:5432/lumio'
 
-    # Redis
+    # Redis / Celery
     redis_url: str = 'redis://localhost:6379/0'
     celery_broker_url: str = 'redis://localhost:6379/1'
     celery_result_backend: str = 'redis://localhost:6379/2'
@@ -34,11 +34,24 @@ class Settings(BaseSettings):
     oss_bucket_name: str = ''
     oss_base_url: str = ''
 
-    # AI Gateway
+    # AI Gateway (OpenAI-compatible chat completions)
     ai_gateway_base_url: str = 'https://api.openai.com/v1'
     ai_gateway_api_key: str = ''
     ai_gateway_model: str = 'gpt-4o-mini'
     ai_gateway_timeout: int = 60
+
+    # Embedding Gateway (OpenAI-compatible embeddings). Empty key uses local vectors.
+    embedding_base_url: str = 'https://api.openai.com/v1'
+    embedding_api_key: str = ''
+    embedding_model: str = 'text-embedding-3-small'
+    embedding_dimensions: int = 128
+
+    # External provider adapters. Empty keys keep local mock mode enabled.
+    sms_provider: str = 'mock'
+    sms_api_key: str = ''
+    email_provider: str = 'mock'
+    email_api_key: str = ''
+    payment_provider: str = 'mock'
 
     # Security
     secret_key: str = 'change-me-in-production'
