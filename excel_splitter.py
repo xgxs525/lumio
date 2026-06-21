@@ -46,7 +46,7 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None) -> lo
     # 清除已有的处理器
     logger.handlers.clear()
     
-    # 控制台处理器
+    # 终端处理器
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_format = logging.Formatter(

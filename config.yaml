@@ -3,7 +3,7 @@
 
 # 日志配置
 log_level: INFO  # DEBUG, INFO, WARNING, ERROR
-log_file: ./logs/excel_splitter.log  # 可选，留空则只输出到控制台
+log_file: ./logs/excel_splitter.log  # 可选，留空则只输出到终端
 
 # 拆分任务列表
 tasks:
