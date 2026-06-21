@@ -1,4 +1,4 @@
-from functools import lru_cache
+﻿from functools import lru_cache
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,14 +11,19 @@ class Settings(BaseSettings):
         extra='ignore',
     )
 
-    app_name: str = 'Lumio 序光'
+    app_name: str = '序光'
     app_env: Literal['development', 'staging', 'production'] = 'development'
     debug: bool = True
     api_prefix: str = '/api/v1'
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
 
     # PostgreSQL
-    database_url: str = 'postgresql+asyncpg://lumio:lumio@localhost:5432/lumio'
+    database_url: str = 'postgresql+asyncpg://postgres:Xg022335@localhost:5432/lumio'
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 30
+    db_pool_recycle: int = 1800
+    slow_request_seconds: float = 1.5
 
     # Redis / Celery
     redis_url: str = 'redis://localhost:6379/0'
@@ -67,3 +72,4 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+

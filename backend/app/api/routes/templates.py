@@ -53,7 +53,7 @@ async def _get_template_for_user(db: AsyncSession, template_id: str, user: User)
 @router.get("", response_model=dict)
 async def list_public_templates(db: AsyncSession = Depends(get_session)):
     result = await db.execute(
-        select(UserTemplate).where(UserTemplate.user_id.is_(None)).order_by(UserTemplate.created_at.desc())
+        select(UserTemplate).where(UserTemplate.user_id.is_(None)).order_by(UserTemplate.created_at.desc()).limit(60)
     )
     return {"success": True, "templates": [_template_payload(item) for item in result.scalars().all()]}
 
@@ -64,7 +64,7 @@ async def list_my_templates(
     db: AsyncSession = Depends(get_session),
 ):
     result = await db.execute(
-        select(UserTemplate).where(UserTemplate.user_id == user.id).order_by(UserTemplate.created_at.desc())
+        select(UserTemplate).where(UserTemplate.user_id == user.id).order_by(UserTemplate.created_at.desc()).limit(100)
     )
     return {"success": True, "templates": [_template_payload(item) for item in result.scalars().all()]}
 

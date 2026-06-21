@@ -1,6 +1,8 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
+import logging
+from time import perf_counter
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
@@ -8,6 +10,8 @@ from app.core.config import get_settings
 from app.core.database import Base, engine
 from app.core.schema_compat import run_compat_migrations
 import app.models  # noqa: F401
+
+logger = logging.getLogger('序光.api')
 
 
 @asynccontextmanager
@@ -23,7 +27,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     application = FastAPI(
         title=settings.app_name,
-        description='Lumio 序光 AI 办公平台 API',
+        description='序光 AI 办公平台 API',
         version='2.0.0',
         lifespan=lifespan,
     )
@@ -34,8 +38,25 @@ def create_app() -> FastAPI:
         allow_methods=['*'],
         allow_headers=['*'],
     )
+
+    @application.middleware('http')
+    async def add_process_time_header(request: Request, call_next):
+        started_at = perf_counter()
+        response = await call_next(request)
+        duration = perf_counter() - started_at
+        response.headers['X-Process-Time'] = f'{duration:.4f}'
+        if duration >= settings.slow_request_seconds:
+            logger.warning(
+                'Slow request %.3fs %s %s',
+                duration,
+                request.method,
+                request.url.path,
+            )
+        return response
+
     application.include_router(api_router, prefix=settings.api_prefix)
     return application
 
 
 app = create_app()
+

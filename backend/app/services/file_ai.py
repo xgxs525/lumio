@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import csv
 import hashlib
@@ -338,7 +338,7 @@ def summarize_text(text: str, max_sentences: int = 5) -> str:
         [
             {
                 "role": "system",
-                "content": "你是 Lumio 序光的文件总结助手。请用中文输出结构化摘要，包含核心结论、关键数据、风险与下一步建议。",
+                "content": "你是序光的文件总结助手。请用中文输出结构化摘要，包含核心结论、关键数据、风险与下一步建议。",
             },
             {"role": "user", "content": cleaned[:12000]},
         ],
@@ -373,7 +373,7 @@ def answer_question(question: str, ranked_chunks: list[dict[str, Any]]) -> str:
             {
                 "role": "system",
                 "content": (
-                    "你是 Lumio 序光的文件问答助手。只根据给定资料回答，资料不足时说明缺口。"
+                    "你是序光的文件问答助手。只根据给定资料回答，资料不足时说明缺口。"
                     "回答要清晰、可执行，并在末尾列出引用来源标题。"
                 ),
             },
@@ -387,7 +387,7 @@ def answer_question(question: str, ranked_chunks: list[dict[str, Any]]) -> str:
     return (
         "根据已解析内容，优先参考以下片段：\n"
         f"{evidence}\n\n"
-        f"针对你的问题“{question}”，建议先围绕上述片段核对原文；后续接入正式大模型后可生成更完整的推理答案。"
+        f"针对你的问题“{question}”，建议先围绕上述片段核对原文；接入正式大模型后可生成更完整的推理答案。"
     )
 
 
@@ -486,3 +486,4 @@ def table_to_csv_bytes(table: TableData) -> bytes:
         writer.writerow(table.headers)
     writer.writerows(table.rows)
     return output.getvalue().encode("utf-8-sig")
+

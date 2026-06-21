@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -331,8 +331,8 @@ async def admin_risk(
             "pendingOrders": int(pending_orders or 0),
             "deletedFiles": int(deleted_files or 0),
             "alerts": [
-                "真实支付接入后需开启 webhook 验签",
-                "生产环境需启用 Redis 限流和审计导出",
+                "真实支付接入后需要开启 webhook 验签",
+                "生产环境需要启用 Redis 限流和审计导出",
             ],
         },
     }
@@ -343,7 +343,7 @@ async def admin_announcements(_: User = Depends(get_current_user)):
     return {
         "success": True,
         "data": [
-            {"id": "launch", "title": "Lumio 一期工作台上线", "status": "draft", "audience": "all"},
+            {"id": "launch", "title": "序光一期工作台上线", "status": "draft", "audience": "all"},
             {"id": "billing", "title": "商业化套餐支持本地模拟支付", "status": "draft", "audience": "admin"},
         ],
     }
@@ -429,3 +429,4 @@ async def admin_audit_logs(
             for item in result.scalars().all()
         ],
     }
+

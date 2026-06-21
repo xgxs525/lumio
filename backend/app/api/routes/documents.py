@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import io
 import json
@@ -65,7 +65,7 @@ def _uuid_or_400(value: str, field_name: str = "id") -> uuid.UUID:
     try:
         return uuid.UUID(value)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"{field_name} 无效") from exc
+        raise HTTPException(status_code=400, detail=f"{field_name} 鏃犳晥") from exc
 
 
 def _document_payload(item: Document):
@@ -184,7 +184,7 @@ def _build_ai_text(item: Document, payload: DocumentAIWriteRequest) -> str:
         return (
             "## 改写版本\n\n"
             f"改写要求：{payload.instruction}\n\n"
-            f"{base or '请先补充原始内容，Lumio 会继续根据你的要求进行扩写和润色。'}"
+            f"{base or '请先补充原始内容，序光会继续根据你的要求进行扩写和润色。'}"
         )
     return (
         "## AI 起草内容\n\n"
@@ -521,7 +521,7 @@ async def ai_write_document(
     conversation = AIConversation(
         workspace_id=workspace.id,
         user_id=user.id,
-        title=f"{item.title} AI 写作",
+        title=f"{item.title} AI 鍐欎綔",
         source_type="document",
         source_id=item.id,
     )
@@ -604,3 +604,4 @@ async def delete_document(
     )
     await db.flush()
     return {"success": True}
+
