@@ -16,6 +16,7 @@ from app.api.routes import (
     jobs,
     knowledge,
     share,
+    tags,
     tasks,
     team,
     templates,
@@ -46,3 +47,4 @@ api_router.include_router(knowledge.router)
 api_router.include_router(jobs.router)
 api_router.include_router(team.router)
 api_router.include_router(share.router)
+api_router.include_router(tags.router)

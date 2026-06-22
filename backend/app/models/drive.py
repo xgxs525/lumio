@@ -71,6 +71,7 @@ class WorkspaceFile(Base):
     folder = relationship('Folder', back_populates='files')
     versions = relationship('FileVersion', back_populates='file', cascade='all, delete-orphan')
     shares = relationship('FileShare', back_populates='file', cascade='all, delete-orphan')
+    tags = relationship('FileTag', back_populates='file', cascade='all, delete-orphan')
 
 
 class FileVersion(Base):
@@ -116,3 +117,35 @@ class FileShare(Base):
     file = relationship('WorkspaceFile', back_populates='shares')
     workspace = relationship('Workspace')
     creator = relationship('User', foreign_keys=[created_by])
+
+
+class Tag(Base):
+    __tablename__ = 'tags'
+    __table_args__ = (UniqueConstraint('workspace_id', 'name', name='uq_tags_workspace_name'),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey('workspaces.id', ondelete='CASCADE'), index=True
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    color: Mapped[str | None] = mapped_column(String(20), default="blue")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    files = relationship('FileTag', back_populates='tag', cascade='all, delete-orphan')
+
+
+class FileTag(Base):
+    __tablename__ = 'file_tags'
+    __table_args__ = (UniqueConstraint('file_id', 'tag_id', name='uq_file_tags_file_tag'),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    file_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey('workspace_files.id', ondelete='CASCADE'), index=True
+    )
+    tag_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey('tags.id', ondelete='CASCADE'), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    file = relationship('WorkspaceFile', back_populates='tags')
+    tag = relationship('Tag', back_populates='files')

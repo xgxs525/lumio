@@ -1,7 +1,7 @@
 from app.models.ai import AIConversation, AIMessage, AIModelConfig
 from app.models.billing import Order, Payment, PaymentProviderConfig, Plan, Subscription
 from app.models.document import Document, DocumentShare, DocumentVersion
-from app.models.drive import FileShare, FileVersion, Folder, WorkspaceFile
+from app.models.drive import FileShare, FileTag, FileVersion, Folder, Tag, WorkspaceFile
 from app.models.file import UploadedFile
 from app.models.knowledge import FileChunk, FileEmbedding, KnowledgeBase, KnowledgeSource
 from app.models.operations import AuditLog, Job, UsageRecord
@@ -23,6 +23,7 @@ __all__ = [
     'FileChunk',
     'FileEmbedding',
     'FileShare',
+    'FileTag',
     'FileVersion',
     'Folder',
     'Job',
@@ -37,6 +38,7 @@ __all__ = [
     'Role',
     'RolePermission',
     'Subscription',
+    'Tag',
     'UploadedFile',
     'UsageRecord',
     'User',
