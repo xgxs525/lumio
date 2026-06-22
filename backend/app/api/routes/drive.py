@@ -728,3 +728,101 @@ async def delete_drive_file(
     item.status = "deleted"
     item.deleted_at = datetime.now(UTC)
     return {"success": True}
+
+
+# ── 回收站 ──────────────────────────────────────
+
+@router.get("/trash", response_model=dict)
+async def list_trash(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    stmt = (
+        select(WorkspaceFile)
+        .where(
+            WorkspaceFile.workspace_id == workspace.id,
+            WorkspaceFile.deleted_at.isnot(None),
+        )
+        .order_by(WorkspaceFile.deleted_at.desc())
+    )
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    return {"data": [_file_payload(item) for item in items], "total": len(items)}
+
+
+@router.post("/files/{file_id}/restore", response_model=dict)
+async def restore_file(
+    file_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    stmt = select(WorkspaceFile).where(
+        WorkspaceFile.id == file_id,
+        WorkspaceFile.workspace_id == workspace.id,
+        WorkspaceFile.deleted_at.isnot(None),
+    )
+    result = await db.execute(stmt)
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="File not found in trash")
+
+    item.status = "active"
+    item.deleted_at = None
+    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="file.restore", resource_type="file", resource_id=file_id))
+    return {"success": True}
+
+
+@router.delete("/files/{file_id}/permanent", response_model=dict)
+async def permanent_delete_file(
+    file_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    item = await _get_workspace_file(db, workspace.id, file_id)
+
+    # Remove from storage
+    storage = get_storage()
+    try:
+        if item.storage_key:
+            storage.delete(item.storage_key)
+    except Exception:
+        pass
+
+    # Delete related shares and versions
+    await db.execute(select(FileShare).where(FileShare.file_id == file_id))
+    await db.execute(select(FileVersion).where(FileVersion.file_id == file_id))
+
+    await db.delete(item)
+    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="file.permanent_delete", resource_type="file", resource_id=file_id))
+    return {"success": True}
+
+
+@router.post("/trash/empty", response_model=dict)
+async def empty_trash(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    stmt = select(WorkspaceFile).where(
+        WorkspaceFile.workspace_id == workspace.id,
+        WorkspaceFile.deleted_at.isnot(None),
+    )
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+
+    storage = get_storage()
+    count = 0
+    for item in items:
+        try:
+            if item.storage_key:
+                storage.delete(item.storage_key)
+        except Exception:
+            pass
+        await db.delete(item)
+        count += 1
+
+    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="trash.empty", resource_type="trash", resource_id=workspace.id, meta={"count": count}))
+    return {"success": True, "deleted_count": count}
