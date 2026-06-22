@@ -28,10 +28,15 @@ class Folder(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    is_team_shared: Mapped[bool] = mapped_column(default=False)
+    shared_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
 
     workspace = relationship('Workspace')
     parent = relationship('Folder', remote_side=[id])
     owner = relationship('User', foreign_keys=[owner_id])
+    sharer = relationship('User', foreign_keys=[shared_by])
     files = relationship('WorkspaceFile', back_populates='folder')
 
 

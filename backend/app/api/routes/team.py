@@ -612,3 +612,89 @@ async def team_usage(
             for usage_type, unit, quantity in result.all()
         ],
     }
+
+
+# ── 团队共享文件夹 ────────────────────────────
+
+class SharedFolderPayload(BaseModel):
+    folder_id: str
+    name: str
+    file_count: int = 0
+    shared_by_name: str | None = None
+    created_at: str | None = None
+
+
+@router.get("/shared-folders", response_model=dict)
+async def list_shared_folders(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+
+    from app.models.drive import Folder
+    from app.models.drive import WorkspaceFile as WFile
+
+    stmt = (
+        select(Folder)
+        .where(
+            Folder.workspace_id == workspace.id,
+            Folder.is_team_shared == True,
+            Folder.deleted_at.is_(None),
+        )
+        .order_by(Folder.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    folders = result.scalars().all()
+
+    data = []
+    for folder in folders:
+        file_count = await db.scalar(
+            select(func.count(WFile.id)).where(
+                WFile.folder_id == folder.id,
+                WFile.deleted_at.is_(None),
+            )
+        )
+        data.append(SharedFolderPayload(
+            folder_id=str(folder.id),
+            name=folder.name,
+            file_count=int(file_count or 0),
+            shared_by_name=None,
+            created_at=folder.created_at.isoformat() if folder.created_at else None,
+        ))
+
+    return {"success": True, "data": [d.model_dump() for d in data]}
+
+
+@router.post("/shared-folders/{folder_id}", response_model=dict)
+async def toggle_shared_folder(
+    folder_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+
+    from app.models.drive import Folder
+
+    stmt = select(Folder).where(
+        Folder.id == folder_id,
+        Folder.workspace_id == workspace.id,
+        Folder.deleted_at.is_(None),
+    )
+    result = await db.execute(stmt)
+    folder = result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    folder.is_team_shared = not folder.is_team_shared
+    folder.shared_by = user.id if folder.is_team_shared else None
+
+    db.add(AuditLog(
+        workspace_id=workspace.id,
+        user_id=user.id,
+        action="folder.share_toggle",
+        resource_type="folder",
+        resource_id=folder_id,
+        meta={"is_team_shared": folder.is_team_shared},
+    ))
+
+    return {"success": True, "is_team_shared": folder.is_team_shared}
