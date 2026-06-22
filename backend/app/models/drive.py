@@ -145,7 +145,7 @@ class FileTag(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey('workspace_files.id', ondelete='CASCADE'), index=True
+        Uuid(as_uuid=True), ForeignKey('files.id', ondelete='CASCADE'), index=True
     )
     tag_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey('tags.id', ondelete='CASCADE'), index=True
