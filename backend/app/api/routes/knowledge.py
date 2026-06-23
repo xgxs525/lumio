@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from decimal import Decimal
 
@@ -202,10 +203,12 @@ async def _index_source(
             char_count=len(content),
             metadata_=chunk_data.get("metadata", {}),
         )
+        # Offload blocking embedding HTTP call to thread pool
+        embedding_vector = await asyncio.to_thread(embed_text, content)
         embedding = KbChunkEmbedding(
             chunk_id=chunk_id,
             embedding_model_name=embedding_model_name(),
-            embedding=embed_text(content),
+            embedding=embedding_vector,
         )
         db.add(chunk)
         db.add(embedding)
@@ -461,10 +464,12 @@ async def add_knowledge_source(
                         char_count=len(content),
                         metadata_=chunk_data.get("metadata", {}),
                     )
+                    # Offload blocking embedding HTTP call to thread pool
+                    embedding_vector = await asyncio.to_thread(embed_text, content)
                     embedding = KbChunkEmbedding(
                         chunk_id=chunk_id,
                         embedding_model_name=embedding_model_name(),
-                        embedding=embed_text(content),
+                        embedding=embedding_vector,
                     )
                     db.add(chunk)
                     db.add(embedding)
@@ -476,10 +481,6 @@ async def add_knowledge_source(
             except Exception as exc:
                 source.status = "failed"
                 source.error_message = str(exc)
-
-            except Exception as exc:
-                source.status = "failed"
-                source.error_message = f"处理内容失败: {str(exc)}"
 
         elif payload.source_type == "link" and url:
             source.status = "synced"
@@ -568,7 +569,7 @@ async def ask_knowledge_base(
     workspace = await ensure_user_workspace(db, user)
     item = await _get_knowledge_in_workspace(db, workspace.id, knowledge_base_id)
     chunks = await _load_kb_chunks(db, knowledge_base_id=item.id)
-    ranked = rank_chunks(payload.question, chunks, limit=payload.limit)
+    ranked = await asyncio.to_thread(rank_chunks, payload.question, chunks, limit=payload.limit)
     answer = answer_question(payload.question, ranked)
     await assert_ai_quota(
         db,

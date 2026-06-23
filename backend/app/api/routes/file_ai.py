@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -285,6 +286,7 @@ async def _index_file(
             content_type="text",
             meta=chunk_data["metadata"],
         )
+        embedding_vector = await asyncio.to_thread(embed_text, chunk.content)
         embedding = KbChunkEmbedding(
             workspace_id=item.workspace_id,
             file_id=item.id,
@@ -293,7 +295,7 @@ async def _index_file(
             source_id=item.id,
             chunk_id=chunk_id,
             embedding_model=embedding_model_name(),
-            embedding=embed_text(chunk.content),
+            embedding=embedding_vector,
         )
         db.add(chunk)
         db.add(embedding)
@@ -406,7 +408,7 @@ async def ask_file(
     if not chunks:
         await _index_file(db, item=item, user_id=user.id)
         chunks = await _load_rankable_chunks(db, workspace_id=workspace.id, file_id=item.id)
-    ranked = rank_chunks(payload.question, chunks, limit=payload.limit)
+    ranked = await asyncio.to_thread(rank_chunks, payload.question, chunks, limit=payload.limit)
     answer = answer_question(payload.question, ranked)
     await assert_ai_quota(
         db,
@@ -645,7 +647,7 @@ async def _run_file_ai_job(job_id: uuid.UUID) -> None:
                     await _index_file(db, item=item, user_id=user_id)
                     chunks = await _load_rankable_chunks(db, workspace_id=workspace_id, file_id=item.id)
                 question = str(payload["question"])
-                ranked = rank_chunks(question, chunks, limit=int(payload.get("limit") or 5))
+                ranked = await asyncio.to_thread(rank_chunks, question, chunks, limit=int(payload.get("limit") or 5))
                 answer = answer_question(question, ranked)
                 output = {"answer": answer, "sources": ranked, "fileId": str(item.id)}
                 db.add(

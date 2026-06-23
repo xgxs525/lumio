@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import asyncio
 import io
 import json
 import secrets
@@ -259,10 +260,11 @@ async def _add_document_to_knowledge(
             char_count=len(str(chunk_data["content"])),
             metadata_=chunk_data.get("metadata", {}),
         )
+        embedding_vector = await asyncio.to_thread(embed_text, chunk.content)
         embedding = KbChunkEmbedding(
             chunk_id=chunk_id,
             embedding_model_name=embedding_model_name(),
-            embedding=embed_text(chunk.content),
+            embedding=embedding_vector,
         )
         db.add(chunk)
         db.add(embedding)
