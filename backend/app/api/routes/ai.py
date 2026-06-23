@@ -55,6 +55,7 @@ def _conversation_payload(item: AIConversation):
         "title": item.title,
         "sourceType": item.source_type,
         "sourceId": str(item.source_id) if item.source_id else None,
+        "isPinned": item.is_pinned,
         "createdAt": _dt(item.created_at),
         "updatedAt": _dt(item.updated_at),
     }
@@ -227,8 +228,8 @@ async def list_conversations(
     result = await db.execute(
         select(AIConversation)
         .where(AIConversation.workspace_id == workspace.id)
-        .order_by(AIConversation.updated_at.desc())
-        .limit(100)
+        .order_by(AIConversation.is_pinned.desc(), AIConversation.updated_at.desc())
+        .limit(200)
     )
     return {"success": True, "data": [_conversation_payload(item) for item in result.scalars().all()]}
 
@@ -292,3 +293,38 @@ async def create_message(
     db.add(item)
     await db.flush()
     return {"success": True, "data": _message_payload(item)}
+
+
+@router.patch("/conversations/{conversation_id}", response_model=dict)
+async def update_conversation(
+    conversation_id: str,
+    payload: dict,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    conversation = await _get_conversation_in_workspace(db, workspace.id, conversation_id)
+
+    if "title" in payload:
+        title = str(payload["title"]).strip()
+        if title:
+            conversation.title = title[:255]
+    if "isPinned" in payload:
+        conversation.is_pinned = bool(payload["isPinned"])
+        conversation.pinned_at = datetime.now(UTC) if payload["isPinned"] else None
+
+    await db.flush()
+    return {"success": True, "data": _conversation_payload(conversation)}
+
+
+@router.delete("/conversations/{conversation_id}", response_model=dict)
+async def delete_conversation(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    conversation = await _get_conversation_in_workspace(db, workspace.id, conversation_id)
+    await db.delete(conversation)
+    await db.flush()
+    return {"success": True}

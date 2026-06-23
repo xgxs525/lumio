@@ -18,7 +18,7 @@ from app.api.deps import get_session
 from app.api.routes.auth import get_current_user
 from app.models.ai import AIConversation, AIMessage
 from app.models.document import Document, DocumentShare, DocumentVersion
-from app.models.knowledge import FileChunk, FileEmbedding, KnowledgeBase, KnowledgeSource
+from app.models.knowledge import KbChunk, KbChunkEmbedding, KbKnowledgeBase, KbSource
 from app.models.operations import AuditLog, UsageRecord
 from app.models.user import User
 from app.services.billing import assert_ai_quota
@@ -202,74 +202,77 @@ async def _add_document_to_knowledge(
     db: AsyncSession,
     *,
     item: Document,
-    knowledge_base: KnowledgeBase,
+    knowledge_base: KbKnowledgeBase,
     user_id: uuid.UUID,
 ) -> dict:
-    await db.execute(
-        delete(FileEmbedding).where(
-            FileEmbedding.workspace_id == item.workspace_id,
-            FileEmbedding.source_type == "document",
-            FileEmbedding.source_id == item.id,
-            FileEmbedding.knowledge_base_id == knowledge_base.id,
+    # Find or create the knowledge source record first
+    source_result = await db.execute(
+        select(KbSource).where(
+            KbSource.knowledge_base_id == knowledge_base.id,
+            KbSource.source_type == "document",
+            KbSource.document_id == item.id,
         )
     )
-    await db.execute(
-        delete(FileChunk).where(
-            FileChunk.workspace_id == item.workspace_id,
-            FileChunk.source_type == "document",
-            FileChunk.source_id == item.id,
-            FileChunk.knowledge_base_id == knowledge_base.id,
+    source = source_result.scalar_one_or_none()
+    if source is None:
+        source = KbSource(
+            knowledge_base_id=knowledge_base.id,
+            user_id=user_id,
+            source_type="document",
+            title=item.title,
+            document_id=item.id,
+            status="pending",
+            metadata_={"title": item.title},
+        )
+        db.add(source)
+        await db.flush()
+    else:
+        source.status = "pending"
+        source.metadata_ = {"title": item.title}
+
+    # Clear old chunks for this source
+    chunk_result = await db.execute(
+        select(KbChunk.id).where(
+            KbChunk.knowledge_base_id == knowledge_base.id,
+            KbChunk.source_id == source.id,
         )
     )
+    chunk_ids = [row[0] for row in chunk_result.all()]
+    if chunk_ids:
+        await db.execute(
+            delete(KbChunkEmbedding).where(KbChunkEmbedding.chunk_id.in_(chunk_ids))
+        )
+        await db.execute(delete(KbChunk).where(KbChunk.id.in_(chunk_ids)))
+
     chunks = build_chunks(item.content_text or item.title, source_title=item.title)
     for chunk_data in chunks:
         chunk_id = uuid.uuid4()
-        chunk = FileChunk(
+        chunk = KbChunk(
             id=chunk_id,
-            workspace_id=item.workspace_id,
-            file_id=None,
             knowledge_base_id=knowledge_base.id,
-            source_type="document",
-            source_id=item.id,
+            source_id=source.id,
             title=item.title,
             chunk_index=int(chunk_data["chunk_index"]),
             content=str(chunk_data["content"]),
-            content_type="text",
-            meta=chunk_data["metadata"],
+            content_hash=None,
+            token_count=0,
+            char_count=len(str(chunk_data["content"])),
+            metadata_=chunk_data.get("metadata", {}),
         )
-        embedding = FileEmbedding(
-            workspace_id=item.workspace_id,
-            file_id=None,
-            knowledge_base_id=knowledge_base.id,
-            source_type="document",
-            source_id=item.id,
+        embedding = KbChunkEmbedding(
             chunk_id=chunk_id,
-            embedding_model=embedding_model_name(),
+            embedding_model_name=embedding_model_name(),
             embedding=embed_text(chunk.content),
         )
         db.add(chunk)
         db.add(embedding)
 
-    source_result = await db.execute(
-        select(KnowledgeSource).where(
-            KnowledgeSource.knowledge_base_id == knowledge_base.id,
-            KnowledgeSource.source_type == "document",
-            KnowledgeSource.source_id == item.id,
-        )
-    )
-    source = source_result.scalar_one_or_none()
-    if source is None:
-        source = KnowledgeSource(
-            knowledge_base_id=knowledge_base.id,
-            source_type="document",
-            source_id=item.id,
-            sync_status="synced",
-            meta={"title": item.title, "chunkCount": len(chunks)},
-        )
-        db.add(source)
-    else:
-        source.sync_status = "synced"
-        source.meta = {"title": item.title, "chunkCount": len(chunks)}
+    source.status = "synced"
+    source.metadata_ = {"title": item.title, "chunkCount": len(chunks)}
+    source.chunk_count = len(chunks)
+    knowledge_base.source_count = (knowledge_base.source_count or 0) + 1
+    knowledge_base.chunk_count = (knowledge_base.chunk_count or 0) + len(chunks)
+
     db.add(
         AuditLog(
             workspace_id=item.workspace_id,
@@ -574,7 +577,7 @@ async def add_document_to_knowledge(
     item = await _get_document_in_workspace(db, workspace.id, document_id)
     kb_uuid = _uuid_or_400(payload.knowledge_base_id, "knowledge_base_id")
     result = await db.execute(
-        select(KnowledgeBase).where(KnowledgeBase.id == kb_uuid, KnowledgeBase.workspace_id == workspace.id)
+        select(KbKnowledgeBase).where(KbKnowledgeBase.id == kb_uuid, KbKnowledgeBase.workspace_id == workspace.id)
     )
     knowledge_base = result.scalar_one_or_none()
     if knowledge_base is None:

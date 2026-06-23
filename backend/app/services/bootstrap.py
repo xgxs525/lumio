@@ -149,10 +149,10 @@ async def ensure_default_workspace(db: AsyncSession) -> tuple[User, Workspace]:
                 Folder.workspace_id == workspace.id,
                 Folder.parent_id.is_(None),
                 Folder.name == folder_name,
-                Folder.deleted_at.is_(None),
             )
         )
-        if result.scalar_one_or_none() is None:
+        existing = result.scalar_one_or_none()
+        if existing is None:
             db.add(
                 Folder(
                     workspace_id=workspace.id,
@@ -161,6 +161,8 @@ async def ensure_default_workspace(db: AsyncSession) -> tuple[User, Workspace]:
                     parent_id=None,
                 )
             )
+        elif existing.deleted_at is not None:
+            existing.deleted_at = None
 
     await db.flush()
     return user, workspace
@@ -233,10 +235,10 @@ async def ensure_user_workspace(db: AsyncSession, user: User) -> Workspace:
                 Folder.workspace_id == workspace.id,
                 Folder.parent_id.is_(None),
                 Folder.name == folder_name,
-                Folder.deleted_at.is_(None),
             )
         )
-        if result.scalar_one_or_none() is None:
+        existing = result.scalar_one_or_none()
+        if existing is None:
             db.add(
                 Folder(
                     workspace_id=workspace.id,
@@ -245,6 +247,8 @@ async def ensure_user_workspace(db: AsyncSession, user: User) -> Workspace:
                     parent_id=None,
                 )
             )
+        elif existing.deleted_at is not None:
+            existing.deleted_at = None
 
     await db.flush()
     return workspace

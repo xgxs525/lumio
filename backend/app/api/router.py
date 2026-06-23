@@ -15,6 +15,7 @@ from app.api.routes import (
     integrations,
     jobs,
     knowledge,
+    models,
     share,
     tags,
     tasks,
@@ -48,3 +49,4 @@ api_router.include_router(jobs.router)
 api_router.include_router(team.router)
 api_router.include_router(share.router)
 api_router.include_router(tags.router)
+api_router.include_router(models.router)

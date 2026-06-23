@@ -39,11 +39,11 @@ class Settings(BaseSettings):
     oss_bucket_name: str = ''
     oss_base_url: str = ''
 
-    # AI Gateway (OpenAI-compatible chat completions)
-    ai_gateway_base_url: str = 'https://api.openai.com/v1'
+    # AI Gateway (OpenAI-compatible chat completions) — 默认对接 DeepSeek
+    ai_gateway_base_url: str = 'https://api.deepseek.com/v1'
     ai_gateway_api_key: str = ''
-    ai_gateway_model: str = 'gpt-4o-mini'
-    ai_gateway_timeout: int = 60
+    ai_gateway_model: str = 'deepseek-chat'
+    ai_gateway_timeout: int = 120
 
     # Embedding Gateway (OpenAI-compatible embeddings). Empty key uses local vectors.
     embedding_base_url: str = 'https://api.openai.com/v1'

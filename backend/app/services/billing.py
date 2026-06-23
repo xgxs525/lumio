@@ -427,7 +427,7 @@ async def current_usage(db: AsyncSession, workspace: Workspace) -> dict:
 
 async def entitlement_payload(db: AsyncSession, workspace: Workspace) -> dict:
     subscription = await ensure_workspace_subscription(db, workspace)
-    plan = subscription.plan or await get_active_plan(db, workspace.plan or "free")
+    plan = await get_active_plan(db, workspace.plan or "free")
     usage = await current_usage(db, workspace)
     return {
         "workspace": {
@@ -663,7 +663,8 @@ async def cancel_subscription_at_period_end(db: AsyncSession, workspace: Workspa
 
 
 async def assert_storage_quota(db: AsyncSession, workspace: Workspace, added_bytes: int) -> None:
-    plan = (await ensure_workspace_subscription(db, workspace)).plan or await get_active_plan(db, workspace.plan or "free")
+    await ensure_workspace_subscription(db, workspace)
+    plan = await get_active_plan(db, workspace.plan or "free")
     if _unlimited(plan.storage_quota):
         return
     usage = await current_usage(db, workspace)
@@ -672,7 +673,8 @@ async def assert_storage_quota(db: AsyncSession, workspace: Workspace, added_byt
 
 
 async def assert_ai_quota(db: AsyncSession, workspace: Workspace, estimated_tokens: int = 1, *, request_count: int = 1) -> None:
-    plan = (await ensure_workspace_subscription(db, workspace)).plan or await get_active_plan(db, workspace.plan or "free")
+    await ensure_workspace_subscription(db, workspace)
+    plan = await get_active_plan(db, workspace.plan or "free")
     usage = await current_usage(db, workspace)
     if not _unlimited(plan.ai_quota) and usage["aiTokensUsed"] + estimated_tokens > plan.ai_quota:
         raise HTTPException(status_code=402, detail="当前套餐 AI 调用额度不足，请升级套餐后继续使用。")
@@ -681,7 +683,8 @@ async def assert_ai_quota(db: AsyncSession, workspace: Workspace, estimated_toke
 
 
 async def assert_member_quota(db: AsyncSession, workspace: Workspace) -> None:
-    plan = (await ensure_workspace_subscription(db, workspace)).plan or await get_active_plan(db, workspace.plan or "free")
+    await ensure_workspace_subscription(db, workspace)
+    plan = await get_active_plan(db, workspace.plan or "free")
     if _unlimited(plan.member_limit):
         return
     member_count = await db.scalar(
@@ -694,7 +697,8 @@ async def assert_member_quota(db: AsyncSession, workspace: Workspace) -> None:
 async def assert_advanced_model_allowed(db: AsyncSession, workspace: Workspace, model_name: str | None) -> None:
     if not model_name:
         return
-    plan = (await ensure_workspace_subscription(db, workspace)).plan or await get_active_plan(db, workspace.plan or "free")
+    await ensure_workspace_subscription(db, workspace)
+    plan = await get_active_plan(db, workspace.plan or "free")
     advanced_models = set((plan.model_policy or {}).get("advancedModels") or [])
     if model_name in advanced_models and not plan.advanced_model_enabled:
         raise HTTPException(status_code=402, detail="当前套餐不支持高级模型，请升级团队版或企业版。")

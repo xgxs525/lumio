@@ -15,7 +15,7 @@ from app.core.database import AsyncSessionLocal
 from app.api.routes.auth import get_current_user
 from app.models.ai import AIConversation, AIMessage
 from app.models.drive import WorkspaceFile
-from app.models.knowledge import FileChunk, FileEmbedding, KnowledgeBase
+from app.models.knowledge import KbChunk, KbChunkEmbedding, KbKnowledgeBase
 from app.models.operations import AuditLog, Job, UsageRecord
 from app.models.user import User
 from app.models.workspace import Workspace
@@ -229,22 +229,22 @@ async def _clear_existing_chunks(
     source_id: uuid.UUID,
     knowledge_base_id: uuid.UUID | None = None,
 ) -> None:
-    embedding_stmt = delete(FileEmbedding).where(
-        FileEmbedding.workspace_id == workspace_id,
-        FileEmbedding.source_type == source_type,
-        FileEmbedding.source_id == source_id,
+    embedding_stmt = delete(KbChunkEmbedding).where(
+        KbChunkEmbedding.workspace_id == workspace_id,
+        KbChunkEmbedding.source_type == source_type,
+        KbChunkEmbedding.source_id == source_id,
     )
-    chunk_stmt = delete(FileChunk).where(
-        FileChunk.workspace_id == workspace_id,
-        FileChunk.source_type == source_type,
-        FileChunk.source_id == source_id,
+    chunk_stmt = delete(KbChunk).where(
+        KbChunk.workspace_id == workspace_id,
+        KbChunk.source_type == source_type,
+        KbChunk.source_id == source_id,
     )
     if knowledge_base_id:
-        embedding_stmt = embedding_stmt.where(FileEmbedding.knowledge_base_id == knowledge_base_id)
-        chunk_stmt = chunk_stmt.where(FileChunk.knowledge_base_id == knowledge_base_id)
+        embedding_stmt = embedding_stmt.where(KbChunkEmbedding.knowledge_base_id == knowledge_base_id)
+        chunk_stmt = chunk_stmt.where(KbChunk.knowledge_base_id == knowledge_base_id)
     else:
-        embedding_stmt = embedding_stmt.where(FileEmbedding.knowledge_base_id.is_(None))
-        chunk_stmt = chunk_stmt.where(FileChunk.knowledge_base_id.is_(None))
+        embedding_stmt = embedding_stmt.where(KbChunkEmbedding.knowledge_base_id.is_(None))
+        chunk_stmt = chunk_stmt.where(KbChunk.knowledge_base_id.is_(None))
     await db.execute(embedding_stmt)
     await db.execute(chunk_stmt)
 
@@ -272,7 +272,7 @@ async def _index_file(
 
     for chunk_data in chunks:
         chunk_id = uuid.uuid4()
-        chunk = FileChunk(
+        chunk = KbChunk(
             id=chunk_id,
             workspace_id=item.workspace_id,
             file_id=item.id,
@@ -285,7 +285,7 @@ async def _index_file(
             content_type="text",
             meta=chunk_data["metadata"],
         )
-        embedding = FileEmbedding(
+        embedding = KbChunkEmbedding(
             workspace_id=item.workspace_id,
             file_id=item.id,
             knowledge_base_id=knowledge_base_id,
@@ -348,15 +348,15 @@ async def _load_rankable_chunks(
     knowledge_base_id: uuid.UUID | None = None,
 ) -> list[dict]:
     stmt = (
-        select(FileChunk, FileEmbedding.embedding)
-        .join(FileEmbedding, FileEmbedding.chunk_id == FileChunk.id, isouter=True)
-        .where(FileChunk.workspace_id == workspace_id)
-        .order_by(FileChunk.chunk_index.asc())
+        select(KbChunk, KbChunkEmbedding.embedding)
+        .join(KbChunkEmbedding, KbChunkEmbedding.chunk_id == KbChunk.id, isouter=True)
+        .where(KbChunk.workspace_id == workspace_id)
+        .order_by(KbChunk.chunk_index.asc())
     )
     if file_id:
-        stmt = stmt.where(FileChunk.file_id == file_id)
+        stmt = stmt.where(KbChunk.file_id == file_id)
     if knowledge_base_id:
-        stmt = stmt.where(FileChunk.knowledge_base_id == knowledge_base_id)
+        stmt = stmt.where(KbChunk.knowledge_base_id == knowledge_base_id)
     result = await db.execute(stmt)
     items = []
     for chunk, embedding in result.all():
@@ -387,7 +387,7 @@ async def index_file(
     item = await _get_workspace_file(db, workspace.id, file_id)
     kb_uuid = _uuid_or_400(knowledge_base_id, "knowledge_base_id") if knowledge_base_id else None
     if kb_uuid:
-        kb = await db.scalar(select(KnowledgeBase.id).where(KnowledgeBase.id == kb_uuid, KnowledgeBase.workspace_id == workspace.id))
+        kb = await db.scalar(select(KbKnowledgeBase.id).where(KbKnowledgeBase.id == kb_uuid, KbKnowledgeBase.workspace_id == workspace.id))
         if not kb:
             raise HTTPException(status_code=404, detail="知识库不存在")
     return {"success": True, "data": await _index_file(db, item=item, user_id=user.id, knowledge_base_id=kb_uuid)}

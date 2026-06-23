@@ -7,7 +7,7 @@ from app.api.deps import get_session
 from app.api.routes.auth import get_current_user
 from app.models.document import Document
 from app.models.drive import Folder, WorkspaceFile
-from app.models.knowledge import KnowledgeBase
+from app.models.knowledge import KbKnowledgeBase
 from app.models.operations import Job
 from app.models.user import User
 from app.models.workspace import WorkspaceMember
@@ -118,7 +118,7 @@ async def get_workspace_overview(
         select(func.count(Document.id)).where(Document.workspace_id == workspace.id, Document.deleted_at.is_(None))
     )
     knowledge_count = await db.scalar(
-        select(func.count(KnowledgeBase.id)).where(KnowledgeBase.workspace_id == workspace.id)
+        select(func.count(KbKnowledgeBase.id)).where(KbKnowledgeBase.workspace_id == workspace.id)
     )
     job_count = await db.scalar(select(func.count(Job.id)).where(Job.workspace_id == workspace.id))
     member_count = await db.scalar(

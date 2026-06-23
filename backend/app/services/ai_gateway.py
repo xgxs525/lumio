@@ -53,7 +53,14 @@ class AIGateway:
             )
 
         if response.status_code >= 400:
-            raise AIGatewayError(f'AI Gateway error {response.status_code}: {response.text}')
+            detail = response.text
+            try:
+                err_data = response.json()
+                if isinstance(err_data, dict):
+                    detail = err_data.get('error', {}).get('message', response.text)
+            except Exception:
+                pass
+            raise AIGatewayError(f'AI 服务调用失败 [{response.status_code}]: {detail}')
 
         data = response.json()
         content = data['choices'][0]['message']['content']

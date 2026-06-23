@@ -21,21 +21,16 @@ TEMPLATE_COLUMN_MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_user_templates_user_id ON user_templates(user_id)",
 ]
 
-KNOWLEDGE_COLUMN_MIGRATIONS = [
-    "ALTER TABLE knowledge_sources ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb",
-    "ALTER TABLE file_chunks ADD COLUMN IF NOT EXISTS knowledge_base_id uuid",
-    "ALTER TABLE file_chunks ADD COLUMN IF NOT EXISTS source_type varchar(40) NOT NULL DEFAULT 'file'",
-    "ALTER TABLE file_chunks ADD COLUMN IF NOT EXISTS source_id uuid",
-    "ALTER TABLE file_chunks ADD COLUMN IF NOT EXISTS title varchar(255)",
-    "ALTER TABLE file_embeddings ADD COLUMN IF NOT EXISTS knowledge_base_id uuid",
-    "ALTER TABLE file_embeddings ADD COLUMN IF NOT EXISTS source_type varchar(40) NOT NULL DEFAULT 'file'",
-    "ALTER TABLE file_embeddings ADD COLUMN IF NOT EXISTS source_id uuid",
-    "ALTER TABLE file_embeddings ALTER COLUMN file_id DROP NOT NULL",
-    "ALTER TABLE file_embeddings ALTER COLUMN chunk_id DROP NOT NULL",
-    "CREATE INDEX IF NOT EXISTS ix_file_chunks_knowledge_base_id ON file_chunks(knowledge_base_id)",
-    "CREATE INDEX IF NOT EXISTS ix_file_chunks_source ON file_chunks(source_type, source_id)",
-    "CREATE INDEX IF NOT EXISTS ix_file_embeddings_knowledge_base_id ON file_embeddings(knowledge_base_id)",
-    "CREATE INDEX IF NOT EXISTS ix_file_embeddings_source ON file_embeddings(source_type, source_id)",
+# Old knowledge tables are replaced by kb_* tables (see app/models/knowledge.py)
+KNOWLEDGE_COLUMN_MIGRATIONS = []
+
+FOLDER_COLUMN_MIGRATIONS = [
+    "ALTER TABLE folders ADD COLUMN IF NOT EXISTS is_team_shared boolean NOT NULL DEFAULT false",
+    "ALTER TABLE folders ADD COLUMN IF NOT EXISTS shared_by uuid",
+]
+DRIVE_COLUMN_MIGRATIONS = [
+    "ALTER TABLE files ADD COLUMN IF NOT EXISTS deleted_at timestamptz",
+    "CREATE INDEX IF NOT EXISTS ix_files_deleted_at ON files(deleted_at)",
 ]
 
 BILLING_COLUMN_MIGRATIONS = [
@@ -102,10 +97,27 @@ async def run_compat_migrations(conn: AsyncConnection) -> None:
         for statement in TEMPLATE_COLUMN_MIGRATIONS:
             await conn.execute(text(statement))
 
-    if await _table_exists(conn, 'file_chunks') and await _table_exists(conn, 'file_embeddings'):
-        for statement in KNOWLEDGE_COLUMN_MIGRATIONS:
-            await conn.execute(text(statement))
+    # Drop old knowledge tables (replaced by kb_* tables)
+    for old_table in ('file_embeddings', 'file_chunks', 'knowledge_sources', 'knowledge_bases'):
+        if await _table_exists(conn, old_table):
+            await conn.execute(text(f'DROP TABLE IF EXISTS {old_table} CASCADE'))
 
     if await _table_exists(conn, 'plans') and await _table_exists(conn, 'subscriptions') and await _table_exists(conn, 'orders'):
         for statement in BILLING_COLUMN_MIGRATIONS:
+            await conn.execute(text(statement))
+
+    if await _table_exists(conn, 'folders'):
+        for statement in FOLDER_COLUMN_MIGRATIONS:
+            await conn.execute(text(statement))
+
+    if await _table_exists(conn, 'files'):
+        for statement in DRIVE_COLUMN_MIGRATIONS:
+            await conn.execute(text(statement))
+
+    if await _table_exists(conn, 'ai_conversations'):
+        for statement in [
+            "ALTER TABLE ai_conversations ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false",
+            "ALTER TABLE ai_conversations ADD COLUMN IF NOT EXISTS pinned_at timestamptz",
+            "CREATE INDEX IF NOT EXISTS ix_ai_conversations_is_pinned ON ai_conversations(is_pinned)",
+        ]:
             await conn.execute(text(statement))

@@ -3,11 +3,22 @@ from app.models.billing import Order, Payment, PaymentProviderConfig, Plan, Subs
 from app.models.document import Document, DocumentShare, DocumentVersion
 from app.models.drive import FileShare, FileTag, FileVersion, Folder, Tag, WorkspaceFile
 from app.models.file import UploadedFile
-from app.models.knowledge import FileChunk, FileEmbedding, KnowledgeBase, KnowledgeSource
+from app.models.knowledge import KbChunk, KbChunkEmbedding, KbKnowledgeBase, KbQaRecord, KbSource
+from app.models.editor import EditorBlock, EditorBlockAsset, EditorDocument, KbSourceEditorBinding
 from app.models.operations import AuditLog, Job, UsageRecord
 from app.models.workspace import Department, Permission, Role, RolePermission, Workspace, WorkspaceMember
 from app.models.task import ProcessingTask
 from app.models.template import UserTemplate
+from app.models.model_registry import (
+    ModelCapability,
+    ModelDescription,
+    ModelFamily,
+    ModelPricing,
+    ModelProvider,
+    ModelUsageLog,
+    ModelVersion,
+    ModelVersionCapability,
+)
 from app.models.user import AuthAccount, User, UserSession
 
 __all__ = [
@@ -20,15 +31,28 @@ __all__ = [
     'Document',
     'DocumentShare',
     'DocumentVersion',
-    'FileChunk',
-    'FileEmbedding',
+    'EditorBlock',
+    'EditorBlockAsset',
+    'EditorDocument',
+    'KbChunk',
+    'KbChunkEmbedding',
+    'KbKnowledgeBase',
+    'KbQaRecord',
+    'KbSource',
+    'KbSourceEditorBinding',
     'FileShare',
     'FileTag',
     'FileVersion',
     'Folder',
     'Job',
-    'KnowledgeBase',
-    'KnowledgeSource',
+    'ModelCapability',
+    'ModelDescription',
+    'ModelFamily',
+    'ModelPricing',
+    'ModelProvider',
+    'ModelUsageLog',
+    'ModelVersion',
+    'ModelVersionCapability',
     'Order',
     'Payment',
     'PaymentProviderConfig',
