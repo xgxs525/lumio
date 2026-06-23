@@ -271,7 +271,11 @@ async def _index_file(
         knowledge_base_id=knowledge_base_id,
     )
 
-    for chunk_data in chunks:
+    # Pre-compute all embeddings in one thread-pool call to avoid greenlet corruption
+    chunk_contents = [str(c["content"]) for c in chunks]
+    vectors = await asyncio.to_thread(lambda: [embed_text(c) for c in chunk_contents])
+
+    for idx, chunk_data in enumerate(chunks):
         chunk_id = uuid.uuid4()
         chunk = KbChunk(
             id=chunk_id,
@@ -282,11 +286,10 @@ async def _index_file(
             source_id=item.id,
             title=item.name,
             chunk_index=int(chunk_data["chunk_index"]),
-            content=str(chunk_data["content"]),
+            content=chunk_contents[idx],
             content_type="text",
             meta=chunk_data["metadata"],
         )
-        embedding_vector = await asyncio.to_thread(embed_text, chunk.content)
         embedding = KbChunkEmbedding(
             workspace_id=item.workspace_id,
             file_id=item.id,
@@ -295,7 +298,7 @@ async def _index_file(
             source_id=item.id,
             chunk_id=chunk_id,
             embedding_model=embedding_model_name(),
-            embedding=embedding_vector,
+            embedding=vectors[idx],
         )
         db.add(chunk)
         db.add(embedding)

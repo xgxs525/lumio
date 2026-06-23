@@ -246,7 +246,10 @@ async def _add_document_to_knowledge(
         await db.execute(delete(KbChunk).where(KbChunk.id.in_(chunk_ids)))
 
     chunks = build_chunks(item.content_text or item.title, source_title=item.title)
-    for chunk_data in chunks:
+    # Pre-compute all embeddings in one thread-pool call to avoid greenlet corruption
+    chunk_contents = [str(c["content"]) for c in chunks]
+    vectors = await asyncio.to_thread(lambda: [embed_text(c) for c in chunk_contents])
+    for idx, chunk_data in enumerate(chunks):
         chunk_id = uuid.uuid4()
         chunk = KbChunk(
             id=chunk_id,
@@ -254,17 +257,16 @@ async def _add_document_to_knowledge(
             source_id=source.id,
             title=item.title,
             chunk_index=int(chunk_data["chunk_index"]),
-            content=str(chunk_data["content"]),
+            content=chunk_contents[idx],
             content_hash=None,
             token_count=0,
-            char_count=len(str(chunk_data["content"])),
+            char_count=len(chunk_contents[idx]),
             metadata_=chunk_data.get("metadata", {}),
         )
-        embedding_vector = await asyncio.to_thread(embed_text, chunk.content)
         embedding = KbChunkEmbedding(
             chunk_id=chunk_id,
             embedding_model_name=embedding_model_name(),
-            embedding=embedding_vector,
+            embedding=vectors[idx],
         )
         db.add(chunk)
         db.add(embedding)

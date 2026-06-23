@@ -188,9 +188,12 @@ async def _index_source(
         source_record_id=source_record_id,
     )
     chunks = build_chunks(text, source_title=title)
-    for chunk_data in chunks:
+    # Pre-compute all embeddings in one thread-pool call to avoid greenlet corruption
+    chunk_contents = [str(c["content"]) for c in chunks]
+    vectors = await asyncio.to_thread(lambda: [embed_text(c) for c in chunk_contents])
+    for idx, chunk_data in enumerate(chunks):
         chunk_id = uuid.uuid4()
-        content = str(chunk_data["content"])
+        content = chunk_contents[idx]
         chunk = KbChunk(
             id=chunk_id,
             knowledge_base_id=knowledge_base_id,
@@ -203,12 +206,10 @@ async def _index_source(
             char_count=len(content),
             metadata_=chunk_data.get("metadata", {}),
         )
-        # Offload blocking embedding HTTP call to thread pool
-        embedding_vector = await asyncio.to_thread(embed_text, content)
         embedding = KbChunkEmbedding(
             chunk_id=chunk_id,
             embedding_model_name=embedding_model_name(),
-            embedding=embedding_vector,
+            embedding=vectors[idx],
         )
         db.add(chunk)
         db.add(embedding)
@@ -449,9 +450,12 @@ async def add_knowledge_source(
 
                 source.raw_text = text_content
                 chunks = build_chunks(plain_data, source_title=title)
-                for chunk_data in chunks:
+                # Pre-compute all embeddings in one thread-pool call to avoid greenlet corruption
+                chunk_contents = [str(c["content"]) for c in chunks]
+                vectors = await asyncio.to_thread(lambda: [embed_text(c) for c in chunk_contents])
+                for idx, chunk_data in enumerate(chunks):
                     chunk_id = uuid.uuid4()
-                    content = str(chunk_data["content"])
+                    content = chunk_contents[idx]
                     chunk = KbChunk(
                         id=chunk_id,
                         knowledge_base_id=item.id,
@@ -464,12 +468,10 @@ async def add_knowledge_source(
                         char_count=len(content),
                         metadata_=chunk_data.get("metadata", {}),
                     )
-                    # Offload blocking embedding HTTP call to thread pool
-                    embedding_vector = await asyncio.to_thread(embed_text, content)
                     embedding = KbChunkEmbedding(
                         chunk_id=chunk_id,
                         embedding_model_name=embedding_model_name(),
-                        embedding=embedding_vector,
+                        embedding=vectors[idx],
                     )
                     db.add(chunk)
                     db.add(embedding)
