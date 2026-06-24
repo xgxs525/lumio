@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 from datetime import UTC, datetime
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -13,6 +12,7 @@ from app.api.deps import get_session
 from app.models.document import Document, DocumentShare
 from app.models.drive import FileShare, WorkspaceFile
 from app.services.storage import get_storage
+from app.utils.files import download_content_disposition, safe_original_filename
 
 router = APIRouter(prefix="/share", tags=["share"])
 
@@ -27,6 +27,16 @@ def _is_expired(value) -> bool:
     now = datetime.now(UTC)
     expires_at = value if value.tzinfo else value.replace(tzinfo=UTC)
     return expires_at <= now
+
+
+def _download_filename(item: WorkspaceFile) -> str:
+    meta = item.meta or {}
+    candidate = meta.get("originalFilename") or meta.get("original_filename") or item.name or item.storage_key
+    fallback = item.name or f"download{f'.{item.extension}' if item.extension else ''}"
+    filename = safe_original_filename(str(candidate), fallback=fallback, max_length=255)
+    if item.extension and not filename.lower().endswith(f".{item.extension.lower()}"):
+        filename = safe_original_filename(f"{filename}.{item.extension}", fallback=fallback, max_length=255)
+    return filename
 
 
 async def _get_file_by_token(db: AsyncSession, token: str) -> tuple[FileShare, WorkspaceFile]:
@@ -91,12 +101,13 @@ async def get_shared_file(token: str, db: AsyncSession = Depends(get_session)):
 async def download_shared_file(token: str, db: AsyncSession = Depends(get_session)):
     _, item = await _get_file_by_token(db, token)
     storage = get_storage()
+    filename = _download_filename(item)
+    headers = {"Content-Disposition": download_content_disposition(filename)}
     local = storage.get_local_path(item.storage_key)
     if local:
-        return FileResponse(str(local), filename=item.name, media_type=item.mime_type)
+        return FileResponse(str(local), media_type=item.mime_type, headers=headers)
 
     data = await storage.read(item.storage_key)
-    headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(item.name)}"}
     return StreamingResponse(io.BytesIO(data), media_type=item.mime_type, headers=headers)
 
 

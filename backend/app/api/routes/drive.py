@@ -5,7 +5,6 @@ import secrets
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -22,7 +21,7 @@ from app.models.user import User
 from app.services.billing import assert_storage_quota
 from app.services.bootstrap import ensure_user_workspace
 from app.services.storage import get_storage
-from app.utils.files import ALLOWED_UPLOAD_EXTENSIONS, new_storage_key, secure_filename
+from app.utils.files import ALLOWED_UPLOAD_EXTENSIONS, download_content_disposition, new_storage_key, safe_original_filename
 
 router = APIRouter(prefix="/drive", tags=["drive"])
 
@@ -98,11 +97,18 @@ def _uuid_or_400(value: str, field_name: str = "id") -> uuid.UUID:
 
 
 def _file_payload(item: WorkspaceFile):
+    meta = item.meta or {}
+    original_filename = safe_original_filename(
+        str(meta.get("originalFilename") or meta.get("original_filename") or item.name),
+        fallback=item.name or "download",
+    )
     return {
         "id": str(item.id),
         "workspaceId": str(item.workspace_id),
         "folderId": str(item.folder_id) if item.folder_id else None,
         "name": item.name,
+        "originalFilename": original_filename,
+        "storedFilename": Path(item.storage_key).name,
         "extension": item.extension,
         "mimeType": item.mime_type,
         "size": item.size,
@@ -154,6 +160,16 @@ def _version_payload(item: FileVersion):
         "createdBy": str(item.created_by) if item.created_by else None,
         "createdAt": _dt(item.created_at),
     }
+
+
+def _download_filename(item: WorkspaceFile) -> str:
+    meta = item.meta or {}
+    candidate = meta.get("originalFilename") or meta.get("original_filename") or item.name or Path(item.storage_key).name
+    fallback = item.name or f"download{f'.{item.extension}' if item.extension else ''}"
+    filename = safe_original_filename(str(candidate), fallback=fallback, max_length=255)
+    if item.extension and not Path(filename).suffix:
+        filename = safe_original_filename(f"{filename}.{item.extension}", fallback=fallback, max_length=255)
+    return filename
 
 
 async def _get_workspace_file(db: AsyncSession, workspace_id: uuid.UUID, file_id: str) -> WorkspaceFile:
@@ -317,7 +333,7 @@ async def create_file_upload_url(
     db: AsyncSession = Depends(get_session),
 ):
     workspace = await ensure_user_workspace(db, user)
-    filename = secure_filename(payload.filename)
+    filename = safe_original_filename(payload.filename)
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
@@ -345,6 +361,7 @@ async def create_file_upload_url(
             "method": method,
             "headers": {"Content-Type": payload.mime_type} if direct_upload else {},
             "storageKey": storage_key,
+            "originalFilename": filename,
             "expiresIn": expires_in,
         },
     }
@@ -357,7 +374,7 @@ async def complete_file_upload(
     db: AsyncSession = Depends(get_session),
 ):
     workspace = await ensure_user_workspace(db, user)
-    filename = secure_filename(payload.filename)
+    filename = safe_original_filename(payload.filename)
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
@@ -377,7 +394,11 @@ async def complete_file_upload(
         checksum=payload.checksum,
         parse_status="pending",
         ai_status="not_ready",
-        meta={"source": "direct_upload"},
+        meta={
+            "source": "direct_upload",
+            "originalFilename": filename,
+            "storedFilename": Path(payload.storage_key).name,
+        },
     )
     db.add(record)
     await db.flush()
@@ -402,7 +423,7 @@ async def create_drive_file(
     db: AsyncSession = Depends(get_session),
 ):
     workspace = await ensure_user_workspace(db, user)
-    base_name = secure_filename(payload.name.strip())
+    base_name = safe_original_filename(payload.name.strip())
     if not base_name:
         raise HTTPException(status_code=400, detail="文件名称不能为空")
 
@@ -446,7 +467,11 @@ async def create_drive_file(
         storage_key=storage_key,
         parse_status="pending",
         ai_status="not_ready",
-        meta={"source": "drive_create"},
+        meta={
+            "source": "drive_create",
+            "originalFilename": filename,
+            "storedFilename": Path(storage_key).name,
+        },
     )
     db.add(record)
     await db.flush()
@@ -464,7 +489,7 @@ async def upload_drive_file(
         raise HTTPException(status_code=400, detail="没有选择文件")
 
     workspace = await ensure_user_workspace(db, user)
-    filename = secure_filename(file.filename)
+    filename = safe_original_filename(file.filename)
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
@@ -499,7 +524,11 @@ async def upload_drive_file(
         storage_key=storage_key,
         parse_status="pending",
         ai_status="not_ready",
-        meta={"source": "drive_upload"},
+        meta={
+            "source": "drive_upload",
+            "originalFilename": filename,
+            "storedFilename": Path(storage_key).name,
+        },
     )
     db.add(record)
     await db.flush()
@@ -516,12 +545,13 @@ async def download_drive_file(
     item = await _get_workspace_file(db, workspace.id, file_id)
 
     storage = get_storage()
+    filename = _download_filename(item)
+    headers = {"Content-Disposition": download_content_disposition(filename)}
     local = storage.get_local_path(item.storage_key)
     if local:
-        return FileResponse(str(local), filename=item.name, media_type=item.mime_type)
+        return FileResponse(str(local), media_type=item.mime_type, headers=headers)
 
     data = await storage.read(item.storage_key)
-    headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(item.name)}"}
     return StreamingResponse(io.BytesIO(data), media_type=item.mime_type, headers=headers)
 
 

@@ -11,7 +11,7 @@ from app.models.file import UploadedFile
 from app.models.user import User
 from app.schemas.file import ColumnsRequest
 from app.services.storage import get_storage
-from app.utils.files import ALLOWED_UPLOAD_EXTENSIONS, new_storage_key, secure_filename
+from app.utils.files import ALLOWED_UPLOAD_EXTENSIONS, new_storage_key, safe_original_filename
 
 router = APIRouter(prefix="/files", tags=["files"])
 
@@ -52,7 +52,7 @@ async def upload_file(
     if file is None or not file.filename:
         raise HTTPException(status_code=400, detail="没有文件")
 
-    original_filename = secure_filename(file.filename)
+    original_filename = safe_original_filename(file.filename)
     ext = Path(original_filename).suffix.lower()
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")

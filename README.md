@@ -254,6 +254,15 @@ python backend\seed_models.py
 - 接入日志收集、性能监控与错误告警
 - 启用 HTTPS 与 CORS 白名单
 
+## 2026-06 知识库与文件能力更新
+
+- 知识库资料接口返回完整内容元数据，包括原文件名、文件类型、文件大小、处理状态、片段数量、原文内容与更新时间。
+- 新增知识内容更新接口：`PATCH /knowledge-bases/{id}/sources/{source_id}`，支持文本类资料编辑后自动重新处理和更新问答索引。
+- 新增知识片段管理接口：`GET /knowledge-bases/{id}/chunks` 与 `DELETE /knowledge-bases/{id}/chunks/{chunk_id}`，用于问答引用核对和高级管理。
+- 文件下载统一保留用户上传时的原文件名，通过 `Content-Disposition` 的 `filename*` 支持中文文件名，避免下载成 UUID、临时名或乱码。
+- 文件上传和云盘记录保留 `originalFilename`、`storedFilename`、`storageKey`、`file_ext`、`mime_type`、`file_size` 等字段职责。
+- 知识库问答返回引用来源信息，便于前端从回答引用跳转到对应知识内容和片段位置。
+
 ## License
 
 MIT

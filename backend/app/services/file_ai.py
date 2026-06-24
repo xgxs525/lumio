@@ -33,6 +33,7 @@ except ImportError:  # pragma: no cover - optional dependency guard
 
 TEXT_EXTENSIONS = {".txt", ".md", ".markdown", ".csv", ".json", ".log", ".yaml", ".yml", ".html", ".xml"}
 EXCEL_EXTENSIONS = {".xlsx", ".xlsm", ".xls", ".csv"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 EMBEDDING_DIMENSIONS = 128
 CHUNK_SIZE = 1200
 CHUNK_OVERLAP = 160
@@ -64,10 +65,25 @@ def normalize_extension(name: str, extension: str | None = None) -> str:
 def decode_text(data: bytes) -> str:
     for encoding in ("utf-8-sig", "utf-8", "gb18030", "gbk", "latin-1"):
         try:
-            return data.decode(encoding)
+            return sanitize_text_for_storage(data.decode(encoding))
         except UnicodeDecodeError:
             continue
-    return data.decode("utf-8", errors="replace")
+    return sanitize_text_for_storage(data.decode("utf-8", errors="replace"))
+
+
+def sanitize_text_for_storage(text: str) -> str:
+    return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+
+
+def _binary_file_summary(filename: str, ext: str, data: bytes, *, kind: str = "二进制文件") -> str:
+    file_type = ext.lstrip(".").upper() if ext else "未知格式"
+    size_kb = len(data) / 1024
+    return (
+        f"{kind}：{filename}\n"
+        f"文件类型：{file_type}\n"
+        f"文件大小：{size_kb:.1f} KB\n"
+        "当前版本暂不解析该文件的原始二进制内容，已将文件作为资料来源加入知识库。"
+    )
 
 
 def parse_file_bytes(filename: str, extension: str | None, data: bytes) -> ParsedContent:
@@ -85,10 +101,16 @@ def parse_file_bytes(filename: str, extension: str | None, data: bytes) -> Parse
         return ParsedContent(text=text, parser="csv", metadata={"extension": ext})
     if ext in TEXT_EXTENSIONS or not ext:
         return ParsedContent(text=decode_text(data), parser="text", metadata={"extension": ext})
+    if ext in IMAGE_EXTENSIONS:
+        return ParsedContent(
+            text=_binary_file_summary(filename, ext, data, kind="图片文件"),
+            parser="image-metadata",
+            metadata={"extension": ext, "image": True},
+        )
     return ParsedContent(
-        text=decode_text(data),
-        parser="binary-text-fallback",
-        metadata={"extension": ext, "warning": "Unsupported binary format, decoded as text where possible."},
+        text=_binary_file_summary(filename, ext, data),
+        parser="binary-metadata",
+        metadata={"extension": ext, "warning": "Unsupported binary format; indexed file metadata only."},
     )
 
 
@@ -181,7 +203,7 @@ def _cell_to_text(value: Any) -> str:
 
 
 def build_chunks(text: str, *, source_title: str = "", max_chars: int = CHUNK_SIZE) -> list[dict[str, Any]]:
-    cleaned = re.sub(r"\n{3,}", "\n\n", text.replace("\r\n", "\n")).strip()
+    cleaned = re.sub(r"\n{3,}", "\n\n", sanitize_text_for_storage(text).replace("\r\n", "\n")).strip()
     if not cleaned:
         return []
     paragraphs = [part.strip() for part in re.split(r"\n\s*\n", cleaned) if part.strip()]
