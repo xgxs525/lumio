@@ -1,9 +1,11 @@
 ﻿from contextlib import asynccontextmanager
 import logging
+import traceback
 from time import perf_counter
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.config import get_settings
@@ -12,6 +14,7 @@ from app.core.schema_compat import run_compat_migrations
 import app.models  # noqa: F401
 
 logger = logging.getLogger('序光.api')
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
@@ -40,9 +43,20 @@ def create_app() -> FastAPI:
     )
 
     @application.middleware('http')
-    async def add_process_time_header(request: Request, call_next):
+    async def catch_exceptions_middleware(request: Request, call_next):
         started_at = perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception(
+                'Unhandled exception %s %s',
+                request.method,
+                request.url.path,
+            )
+            return JSONResponse(
+                status_code=500,
+                content={'detail': '服务器内部错误，请稍后重试'},
+            )
         duration = perf_counter() - started_at
         response.headers['X-Process-Time'] = f'{duration:.4f}'
         if duration >= settings.slow_request_seconds:

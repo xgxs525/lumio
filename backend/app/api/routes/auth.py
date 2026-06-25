@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import re
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -13,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_session
 from app.core.config import get_settings
 from app.core.security import create_access_token, decode_access_token, hash_password, token_hash, verify_password
-from app.models.user import User, UserSession
+from app.models.user import PasswordReset, User, UserSession
 from app.services.bootstrap import ensure_user_workspace
+from app.services.email import send_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 class RegisterRequest(BaseModel):
@@ -69,6 +73,21 @@ class AuthAccountBindRequest(BaseModel):
     provider: str = Field(..., min_length=2, max_length=60)
     provider_user_id: str = Field(..., min_length=1, max_length=255)
     union_id: str | None = Field(default=None, max_length=255)
+
+
+class ForgotPasswordRequest(BaseModel):
+    account: str = Field(..., min_length=3, max_length=255)
+
+    @field_validator("account")
+    @classmethod
+    def strip_account(cls, value: str) -> str:
+        return value.strip()
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=255)
+    code: str | None = Field(default=None, max_length=8)
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 def _normalize_phone(phone: str) -> str:
@@ -204,16 +223,22 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_sess
 
 @router.post("/login", response_model=dict)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_session)):
-    user = await _find_user_by_account(db, payload.account)
-    if user is None:
-        raise HTTPException(status_code=401, detail="账号或密码错误")
+    try:
+        user = await _find_user_by_account(db, payload.account)
+        if user is None:
+            raise HTTPException(status_code=401, detail="账号或密码错误")
 
-    stored_hash = user.password_hash or user.hashed_password
-    if not verify_password(payload.password, stored_hash):
-        raise HTTPException(status_code=401, detail="账号或密码错误")
-    if user.status != "active" or not user.is_active:
-        raise HTTPException(status_code=403, detail="账号已停用")
-    return await _issue_login(db, user, remember=payload.remember)
+        stored_hash = user.password_hash or user.hashed_password
+        if not verify_password(payload.password, stored_hash):
+            raise HTTPException(status_code=401, detail="账号或密码错误")
+        if user.status != "active" or not user.is_active:
+            raise HTTPException(status_code=403, detail="账号已停用")
+        return await _issue_login(db, user, remember=payload.remember)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Login failed for account: %s", payload.account)
+        raise HTTPException(status_code=500, detail="登录服务暂时不可用，请稍后重试")
 
 
 @router.get("/me", response_model=dict)
@@ -312,3 +337,105 @@ async def logout(
     if session is not None:
         session.revoked_at = datetime.now(UTC)
     return {"success": True}
+
+
+@router.post("/forgot-password", response_model=dict)
+async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_session)):
+    """Send a password reset token/code to the user's email or phone."""
+    user = await _find_user_by_account(db, payload.account)
+    if user is None:
+        # Don't reveal whether the account exists
+        return {
+            "success": True,
+            "data": {"message": "如果该账号存在，重置链接已发送至您的联系方式。", "token": None, "code": None},
+        }
+
+    settings = get_settings()
+    token = secrets.token_urlsafe(48)
+    code = str(secrets.randbelow(900000) + 100000)  # 6-digit code
+    expires_at = datetime.now(UTC) + timedelta(minutes=15)
+
+    # Invalidate old unused reset tokens for this user
+    result = await db.execute(
+        select(PasswordReset).where(
+            PasswordReset.user_id == user.id,
+            PasswordReset.used == False,  # noqa: E712
+            PasswordReset.expires_at > datetime.now(UTC),
+        )
+    )
+    for old in result.scalars().all():
+        old.used = True
+
+    reset = PasswordReset(user_id=user.id, token=token, code=code, expires_at=expires_at)
+    db.add(reset)
+    await db.flush()
+
+    # Try to send a real email; fall back to dev-mode direct return
+    email_sent = False
+    if user.email and not user.email.startswith("phone_"):
+        email_sent = send_reset_email(user.email, token, code)
+
+    if email_sent:
+        # Real email sent — don't expose token/code to the client
+        return {
+            "success": True,
+            "data": {
+                "message": "如果该账号存在，重置链接已发送至您的邮箱。验证码 15 分钟内有效。",
+                "sent": True,
+                "expiresIn": 900,
+            },
+        }
+
+    # Dev/fallback mode — return token & code directly
+    is_dev = settings.smtp_host == ""
+    return {
+        "success": True,
+        "data": {
+            "message": f"重置验证码已发送{' (开发模式)' if is_dev else ''}。验证码 15 分钟内有效。",
+            "token": token if is_dev else None,
+            "code": code if is_dev else None,
+            "sent": not is_dev,
+            "expiresIn": 900,
+        },
+    }
+
+
+@router.post("/reset-password", response_model=dict)
+async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_session)):
+    """Verify the reset token & code, then set a new password."""
+    now = datetime.now(UTC)
+    result = await db.execute(
+        select(PasswordReset).where(
+            PasswordReset.token == payload.token,
+            PasswordReset.used == False,  # noqa: E712
+            PasswordReset.expires_at > now,
+        )
+    )
+    reset = result.scalar_one_or_none()
+    if reset is None:
+        raise HTTPException(status_code=400, detail="重置链接已过期或无效，请重新申请。")
+
+    if reset.code and payload.code and reset.code != payload.code:
+        raise HTTPException(status_code=400, detail="验证码不正确")
+
+    result = await db.execute(select(User).where(User.id == reset.user_id))
+    user = result.scalar_one_or_none()
+    if user is None or user.status != "active":
+        raise HTTPException(status_code=400, detail="账号不可用")
+
+    new_hash = hash_password(payload.new_password)
+    user.password_hash = new_hash
+    user.hashed_password = new_hash
+
+    # Revoke all existing sessions
+    sessions_result = await db.execute(
+        select(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+    )
+    for session in sessions_result.scalars().all():
+        session.revoked_at = now
+
+    # Mark the reset token as used
+    reset.used = True
+    await db.flush()
+
+    return {"success": True, "data": {"message": "密码已重置，请使用新密码登录。"}}

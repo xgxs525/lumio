@@ -27,10 +27,18 @@ KNOWLEDGE_COLUMN_MIGRATIONS = []
 FOLDER_COLUMN_MIGRATIONS = [
     "ALTER TABLE folders ADD COLUMN IF NOT EXISTS is_team_shared boolean NOT NULL DEFAULT false",
     "ALTER TABLE folders ADD COLUMN IF NOT EXISTS shared_by uuid",
+    "ALTER TABLE folders ADD COLUMN IF NOT EXISTS deleted_by uuid",
+    "ALTER TABLE folders ADD COLUMN IF NOT EXISTS trash_expire_at timestamptz",
+    "ALTER TABLE folders ADD COLUMN IF NOT EXISTS original_parent_id uuid",
+    "ALTER TABLE folders ADD COLUMN IF NOT EXISTS original_path text",
 ]
 DRIVE_COLUMN_MIGRATIONS = [
     "ALTER TABLE files ADD COLUMN IF NOT EXISTS deleted_at timestamptz",
     "CREATE INDEX IF NOT EXISTS ix_files_deleted_at ON files(deleted_at)",
+    "ALTER TABLE files ADD COLUMN IF NOT EXISTS deleted_by uuid",
+    "ALTER TABLE files ADD COLUMN IF NOT EXISTS trash_expire_at timestamptz",
+    "ALTER TABLE files ADD COLUMN IF NOT EXISTS original_parent_id uuid",
+    "ALTER TABLE files ADD COLUMN IF NOT EXISTS original_path text",
 ]
 
 BILLING_COLUMN_MIGRATIONS = [
@@ -112,6 +120,23 @@ async def run_compat_migrations(conn: AsyncConnection) -> None:
 
     if await _table_exists(conn, 'files'):
         for statement in DRIVE_COLUMN_MIGRATIONS:
+            await conn.execute(text(statement))
+
+    if await _table_exists(conn, 'users'):
+        for statement in [
+            "CREATE TABLE IF NOT EXISTS password_resets ("
+            "  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),"
+            "  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+            "  token varchar(255) NOT NULL UNIQUE,"
+            "  code varchar(8),"
+            "  used boolean NOT NULL DEFAULT false,"
+            "  expires_at timestamptz NOT NULL,"
+            "  created_at timestamptz NOT NULL DEFAULT now()"
+            ")",
+            "CREATE INDEX IF NOT EXISTS ix_password_resets_user_id ON password_resets(user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_password_resets_token ON password_resets(token)",
+            "CREATE INDEX IF NOT EXISTS ix_password_resets_expires_at ON password_resets(expires_at)",
+        ]:
             await conn.execute(text(statement))
 
     if await _table_exists(conn, 'ai_conversations'):

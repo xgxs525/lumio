@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from datetime import timedelta
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,6 +29,10 @@ class Folder(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    trash_expire_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    original_parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    original_path: Mapped[str | None] = mapped_column(Text)
     is_team_shared: Mapped[bool] = mapped_column(default=False)
     shared_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
@@ -70,6 +75,10 @@ class WorkspaceFile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    trash_expire_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    original_parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    original_path: Mapped[str | None] = mapped_column(Text)
 
     workspace = relationship('Workspace')
     owner = relationship('User', foreign_keys=[owner_id])

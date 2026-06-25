@@ -23,6 +23,7 @@ from app.api.routes import (
     templates,
     usage,
     users,
+    video,
     workspaces,
 )
 
@@ -50,3 +51,4 @@ api_router.include_router(team.router)
 api_router.include_router(share.router)
 api_router.include_router(tags.router)
 api_router.include_router(models.router)
+api_router.include_router(video.router)

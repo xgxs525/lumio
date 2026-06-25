@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -56,6 +56,11 @@ class DriveFileCreate(BaseModel):
     mime_type: str = Field(default="text/plain", max_length=120)
     content: str = ""
     folder_id: str | None = None
+
+
+class DriveFileUpdate(BaseModel):
+    content: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=180)
 
 
 class ShareCreate(BaseModel):
@@ -120,6 +125,11 @@ def _file_payload(item: WorkspaceFile):
         "metadata": item.meta or {},
         "createdAt": _dt(item.created_at),
         "updatedAt": _dt(item.updated_at),
+        "deletedAt": _dt(item.deleted_at) if item.deleted_at else None,
+        "deletedBy": str(item.deleted_by) if item.deleted_by else None,
+        "trashExpireAt": _dt(item.trash_expire_at) if item.trash_expire_at else None,
+        "originalParentId": str(item.original_parent_id) if item.original_parent_id else None,
+        "originalPath": item.original_path or None,
     }
 
 
@@ -131,6 +141,11 @@ def _folder_payload(item: Folder):
         "name": item.name,
         "createdAt": _dt(item.created_at),
         "updatedAt": _dt(item.updated_at),
+        "deletedAt": _dt(item.deleted_at) if item.deleted_at else None,
+        "deletedBy": str(item.deleted_by) if item.deleted_by else None,
+        "trashExpireAt": _dt(item.trash_expire_at) if item.trash_expire_at else None,
+        "originalParentId": str(item.original_parent_id) if item.original_parent_id else None,
+        "originalPath": item.original_path or None,
     }
 
 
@@ -413,6 +428,41 @@ async def get_drive_file(
 ):
     workspace = await ensure_user_workspace(db, user)
     item = await _get_workspace_file(db, workspace.id, file_id)
+    return {"success": True, "data": _file_payload(item)}
+
+
+@router.patch("/files/{file_id}", response_model=dict)
+async def update_drive_file(
+    file_id: str,
+    payload: DriveFileUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    workspace = await ensure_user_workspace(db, user)
+    item = await _get_workspace_file(db, workspace.id, file_id)
+
+    if payload.content is not None:
+        content_bytes = payload.content.encode("utf-8")
+        storage_key = item.storage_key
+        settings = get_settings()
+
+        if settings.storage_backend == "local":
+            file_path = Path(settings.local_storage_path) / storage_key
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_bytes(content_bytes)
+        else:
+            # OSS — write as stream
+            import oss2
+            auth = oss2.Auth(settings.oss_access_key_id, settings.oss_access_key_secret)
+            bucket = oss2.Bucket(auth, settings.oss_endpoint, settings.oss_bucket_name)
+            bucket.put_object(storage_key, content_bytes)
+
+        item.size = len(content_bytes)
+
+    if payload.name is not None:
+        item.name = payload.name.strip()
+
+    await db.flush()
     return {"success": True, "data": _file_payload(item)}
 
 
@@ -753,10 +803,36 @@ async def delete_drive_file(
     db: AsyncSession = Depends(get_session),
 ):
     workspace = await ensure_user_workspace(db, user)
-    item = await _get_workspace_file(db, workspace.id, file_id)
+    file_uuid = _uuid_or_400(file_id)
+    # 允许查询已被软删除的文件（用于重复删除的幂等处理）
+    result = await db.execute(
+        select(WorkspaceFile).where(
+            WorkspaceFile.id == file_uuid,
+            WorkspaceFile.workspace_id == workspace.id,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if item is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    if item.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="文件已在回收站中")
+
+    # 加载 folder 关系以避免懒加载问题
+    if item.folder_id:
+        folder_result = await db.execute(
+            select(Folder).where(Folder.id == item.folder_id)
+        )
+        folder = folder_result.scalar_one_or_none()
+    else:
+        folder = None
 
     item.status = "deleted"
     item.deleted_at = datetime.now(UTC)
+    item.deleted_by = user.id
+    item.trash_expire_at = datetime.now(UTC) + timedelta(days=30)
+    item.original_parent_id = item.folder_id
+    item.original_path = folder.name if folder else "云盘根目录"
+    await db.flush()
     return {"success": True}
 
 
@@ -788,19 +864,41 @@ async def restore_file(
     db: AsyncSession = Depends(get_session),
 ):
     workspace = await ensure_user_workspace(db, user)
-    stmt = select(WorkspaceFile).where(
-        WorkspaceFile.id == file_id,
-        WorkspaceFile.workspace_id == workspace.id,
-        WorkspaceFile.deleted_at.isnot(None),
+    file_uuid = _uuid_or_400(file_id)
+    result = await db.execute(
+        select(WorkspaceFile).where(
+            WorkspaceFile.id == file_uuid,
+            WorkspaceFile.workspace_id == workspace.id,
+            WorkspaceFile.deleted_at.isnot(None),
+        )
     )
-    result = await db.execute(stmt)
     item = result.scalar_one_or_none()
     if not item:
-        raise HTTPException(status_code=404, detail="File not found in trash")
+        raise HTTPException(status_code=404, detail="文件在回收站中不存在")
+
+    # 验证原始文件夹是否存在，存在则恢复，不存在或已删除则放到根目录
+    if item.original_parent_id:
+        folder_result = await db.execute(
+            select(Folder).where(
+                Folder.id == item.original_parent_id,
+                Folder.workspace_id == workspace.id,
+                Folder.deleted_at.is_(None),
+            )
+        )
+        original_folder = folder_result.scalar_one_or_none()
+        item.folder_id = item.original_parent_id if original_folder else None
+    else:
+        item.folder_id = None
 
     item.status = "active"
     item.deleted_at = None
-    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="file.restore", resource_type="file", resource_id=file_id))
+    item.deleted_by = None
+    item.trash_expire_at = None
+    item.original_parent_id = None
+    item.original_path = None
+
+    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="file.restore", resource_type="file", resource_id=str(file_uuid)))
+    await db.flush()
     return {"success": True}
 
 
@@ -811,22 +909,42 @@ async def permanent_delete_file(
     db: AsyncSession = Depends(get_session),
 ):
     workspace = await ensure_user_workspace(db, user)
-    item = await _get_workspace_file(db, workspace.id, file_id)
+    file_uuid = _uuid_or_400(file_id)
+    result = await db.execute(
+        select(WorkspaceFile).where(
+            WorkspaceFile.id == file_uuid,
+            WorkspaceFile.workspace_id == workspace.id,
+            WorkspaceFile.deleted_at.isnot(None),
+        )
+    )
+    item = result.scalar_one_or_none()
+    if item is None:
+        raise HTTPException(status_code=404, detail="文件在回收站中不存在")
 
     # Remove from storage
     storage = get_storage()
     try:
         if item.storage_key:
-            storage.delete(item.storage_key)
+            await storage.delete(item.storage_key)
     except Exception:
         pass
 
     # Delete related shares and versions
-    await db.execute(select(FileShare).where(FileShare.file_id == file_id))
-    await db.execute(select(FileVersion).where(FileVersion.file_id == file_id))
+    shares_result = await db.execute(
+        select(FileShare).where(FileShare.file_id == file_uuid)
+    )
+    for share in shares_result.scalars().all():
+        await db.delete(share)
+
+    versions_result = await db.execute(
+        select(FileVersion).where(FileVersion.file_id == file_uuid)
+    )
+    for version in versions_result.scalars().all():
+        await db.delete(version)
 
     await db.delete(item)
-    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="file.permanent_delete", resource_type="file", resource_id=file_id))
+    db.add(AuditLog(workspace_id=workspace.id, user_id=user.id, action="file.permanent_delete", resource_type="file", resource_id=str(file_uuid)))
+    await db.flush()
     return {"success": True}
 
 

@@ -75,3 +75,19 @@ class UserSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship('User', back_populates='sessions')
+
+
+class PasswordReset(Base):
+    __tablename__ = 'password_resets'
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), index=True
+    )
+    token: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    code: Mapped[str | None] = mapped_column(String(8))
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship('User')

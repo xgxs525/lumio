@@ -1,6 +1,7 @@
 ﻿from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,16 @@ class Settings(BaseSettings):
     app_name: str = '序光'
     app_env: Literal['development', 'staging', 'production'] = 'development'
     debug: bool = True
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug(cls, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            return lowered in ("true", "1", "yes", "on")
+        return bool(value)
     api_prefix: str = '/api/v1'
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
 
@@ -56,6 +67,17 @@ class Settings(BaseSettings):
     sms_api_key: str = ''
     email_provider: str = 'mock'
     email_api_key: str = ''
+
+    # SMTP 邮件配置
+    smtp_host: str = ''
+    smtp_port: int = 587
+    smtp_username: str = ''
+    smtp_password: str = ''
+    smtp_use_tls: bool = True
+    smtp_from_email: str = 'noreply@xuguang.com'
+    smtp_from_name: str = '序光平台'
+    site_url: str = 'http://localhost:3000'
+
     payment_provider: str = 'mock'
 
     # Security
