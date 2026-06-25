@@ -1,6 +1,5 @@
 ﻿from contextlib import asynccontextmanager
 import logging
-import traceback
 from time import perf_counter
 
 from fastapi import FastAPI, Request
