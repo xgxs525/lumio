@@ -1,6 +1,6 @@
 # 序光 (XuGuang) — AI 原生办公平台
 
-序光是一站式 AI 办公平台，集成智能知识库、文件理解、在线文档协作、团队管理与多模型 AI 对话能力。项目采用前后端分离架构：FastAPI 后端 + Next.js 前端。
+序光是一站式 AI 办公平台，集成智能知识库、文件理解、在线文档协作、团队管理、视频创作与多模型 AI 对话能力。项目采用前后端分离架构：FastAPI 后端 + Next.js 前端。
 
 ## 项目结构
 
@@ -8,18 +8,17 @@
 lumio/
 ├── backend/                    # FastAPI 后端 (Python)
 │   ├── app/
-│   │   ├── api/routes/         # API 路由 (22 个模块)
+│   │   ├── api/routes/         # API 路由
 │   │   ├── core/               # 配置、数据库、安全
-│   │   ├── models/             # SQLAlchemy ORM 模型 (13 个)
-│   │   ├── schemas/            # Pydantic 数据校验
-│   │   ├── services/           # 业务逻辑 (AI、存储、计费)
+│   │   ├── models/             # SQLAlchemy ORM 模型
+│   │   ├── services/           # 业务逻辑 (AI、存储、计费、邮件)
 │   │   └── tasks/              # Celery 异步任务
 │   ├── alembic/                # 数据库迁移
 │   └── requirements.txt
 │
 ├── lumio-frontend/             # Next.js 前端 (TypeScript)
 │   └── src/
-│       ├── app/                # App Router 页面 (~35 个路由)
+│       ├── app/                # App Router 页面
 │       ├── components/         # 共享组件 (UI、布局、业务)
 │       ├── lib/                # API 客户端、认证工具
 │       └── globals.css
@@ -41,12 +40,12 @@ lumio/
 | Redis | 缓存 / 队列 |
 | Celery | 异步任务 |
 | pgvector | 向量存储 |
-| OpenAI-compatible API | AI & Embedding 网关 |
+| SMTP | 邮件发送 |
 
 ### 前端
 | 技术 | 用途 |
 |------|------|
-| Next.js 15 (App Router) | 框架 |
+| Next.js 16 (Turbopack) | 框架 |
 | TypeScript | 类型安全 |
 | Tailwind CSS | 样式 |
 | TipTap | 富文本编辑器 |
@@ -54,19 +53,18 @@ lumio/
 
 ## 环境依赖
 
-- Python 3.12+
+- Python 3.13
 - Node.js 20+
 - PostgreSQL 16+
 - Redis 7+
-- (可选) pgvector 扩展
 
 ## 快速启动
 
 ### 1. 克隆仓库
 
 ```bash
-git clone <repo-url>
-cd lumio
+git clone https://github.com/xgxs525/lumio.git
+git clone https://github.com/xgxs525/lumio-frontend.git
 ```
 
 ### 2. 后端启动
@@ -77,16 +75,11 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# 配置环境变量 (复制 .env.example 为 .env 并填写)
+# 配置环境变量
 copy .env.example .env
 
 # 启动开发服务器
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-或使用提供的脚本：
-```powershell
-.\run-api.ps1
 ```
 
 ### 3. 前端启动
@@ -119,14 +112,19 @@ CORS_ORIGINS=http://localhost:3000
 DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/lumio
 REDIS_URL=redis://localhost:6379/0
 
+# SMTP 邮件 (可选，开发模式无需配置)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=user@example.com
+SMTP_PASSWORD=password
+SMTP_USE_TLS=true
+SMTP_FROM_EMAIL=noreply@xuguang.com
+SMTP_FROM_NAME=序光平台
+SITE_URL=http://localhost:3000
+
 AI_GATEWAY_BASE_URL=https://api.openai.com/v1
 AI_GATEWAY_API_KEY=sk-xxx
 AI_GATEWAY_MODEL=gpt-4o-mini
-
-EMBEDDING_BASE_URL=https://api.openai.com/v1
-EMBEDDING_API_KEY=sk-xxx
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSIONS=128
 
 STORAGE_BACKEND=local
 LOCAL_STORAGE_PATH=./storage
@@ -142,12 +140,14 @@ API 基础路径：`/api/v1`
 
 | 模块 | 路径前缀 | 说明 |
 |------|---------|------|
-| 认证 | `/auth` | 注册、登录、退出、Token 管理 |
-| 云盘 | `/drive` | 文件/文件夹 CRUD、上传、预览、下载 |
+| 认证 | `/auth` | 注册、登录、退出、忘记密码、重置密码、Token 管理 |
+| 云盘 | `/drive` | 文件/文件夹 CRUD、上传、预览、下载、回收站、软删除 |
+| 文件夹 | `/folders` | 文件夹详情、重命名、移动、删除 |
 | 在线文档 | `/documents` | 文档创建、编辑、版本、导出 |
 | 知识库 | `/knowledge-bases` | 知识库管理、资料添加、向量索引、问答 |
 | 文件 AI | `/file-ai` | 文件解析、分块、向量化、总结、问答 |
 | AI 对话 | `/ai` | 多模型对话、会话管理 |
+| 视频创作 | `/video` | 视频模型、视频任务创建与管理 |
 | 团队 | `/team` | 成员、部门、角色、审计日志 |
 | 计费 | `/billing` | 套餐、订单、支付 |
 | 用量 | `/usage` | 资源用量统计 |
@@ -158,39 +158,13 @@ API 基础路径：`/api/v1`
 
 > 完整接口文档访问 `http://localhost:8000/docs` (Swagger UI)
 
-### 知识库核心接口
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/knowledge-bases` | 获取知识库列表 |
-| POST | `/knowledge-bases` | 创建知识库 |
-| GET | `/knowledge-bases/{id}` | 获取知识库详情 |
-| PATCH | `/knowledge-bases/{id}` | 更新知识库 |
-| DELETE | `/knowledge-bases/{id}` | 删除知识库 |
-| GET | `/knowledge-bases/{id}/sources` | 获取资料来源列表 |
-| POST | `/knowledge-bases/{id}/sources` | 添加资料来源 (文件/文档/链接/文本/手动) |
-| DELETE | `/knowledge-bases/{id}/sources/{sid}` | 删除资料来源 |
-| POST | `/knowledge-bases/{id}/ask` | 知识库问答 |
-| POST | `/knowledge-bases/{id}/sync` | 同步知识库索引 |
-
 ## Docker 部署
 
 ```bash
-# 启动全部服务
 docker-compose up -d
-
-# 仅启动数据库和 Redis
-docker-compose up -d postgres redis
 ```
-
-`docker-compose.yml` 包含 PostgreSQL、Redis 及 API 服务定义。
 
 ## 数据库迁移
-
-```powershell
-cd backend
-alembic upgrade head
-```
 
 服务启动时自动执行兼容迁移并创建缺失表（`core/schema_compat.py`）。
 
@@ -198,11 +172,13 @@ alembic upgrade head
 
 | 功能 | 说明 |
 |------|------|
+| 🔐 用户认证 | 邮箱/手机号注册登录、忘记密码邮件重置、记住登录 |
 | 🧠 智能知识库 | 支持文件/文档/链接/文本多源资料，自动分块与向量索引，基于资料的 AI 问答 |
 | 📄 文件理解 | PDF/Word/Excel/PPT/TXT/Markdown 解析，表格拆分，AI 总结与问答 |
 | ✍️ 在线文档 | 块编辑器，支持 H1-H3、列表、表格、图片、代码块、公式，AI 写作辅助 |
 | 💬 AI 对话 | 多模型支持 (GPT/Claude/DeepSeek)，会话管理，文件附件分析 |
-| ☁️ 云盘 | 文件上传/下载/预览，文件夹管理，回收站，分享链接 |
+| ☁️ 云盘 | 文件上传/下载/预览/编辑，文件夹导航，回收站软删除/恢复，分享链接 |
+| 🎬 视频创作 | 接入多种视频生成模型，支持文生视频、图生视频 |
 | 👥 团队协作 | 成员邀请、部门管理、角色权限、操作审计 |
 | 💰 计费系统 | 套餐订阅、订单管理、用量统计、支付集成 |
 | 📊 后台管理 | 用户、工作空间、存储、订单管理面板 |
@@ -213,55 +189,36 @@ alembic upgrade head
 |------|------|
 | `/` | 首页 |
 | `/login` / `/register` | 登录 / 注册 |
+| `/forgot-password` / `/reset-password` | 忘记密码 / 重置密码 |
 | `/workspace` | 工作空间首页 |
+| `/tasks` | 任务中心 |
+| `/models` | 模型广场 |
+| `/creation` | 创作空间 |
+| `/creation/image` | 图像生成 |
+| `/creation/video` | 视频创作 |
 | `/drive` | 云盘文件管理 |
+| `/drive/folders/{id}` | 文件夹详情 |
+| `/drive/files/{id}` | 文件编辑/预览 |
+| `/drive/trash` | 回收站 |
 | `/knowledge` | 知识库列表 |
 | `/knowledge/{id}` | 知识库详情 |
 | `/knowledge/{id}/add-source` | 添加资料工作台 |
 | `/ai` | AI 对话 |
-| `/documents` | 在线文档 |
 | `/settings` | 个人设置 |
-| `/admin` | 后台管理 |
 | `/billing` | 计费中心 |
 | `/team` | 团队管理 |
-| `/tasks` | 任务中心 |
-| `/templates` | 模板中心 |
-| `/tools` | 工具集 |
+| `/admin` | 后台管理 |
 
-## 开发指南
+## 2026-06 更新
 
-```powershell
-# 后端语法检查
-python -m compileall backend\app
-
-# 前端类型检查
-cd lumio-frontend && npx tsc --noEmit
-
-# 数据库迁移
-cd backend && alembic upgrade head
-
-# 种子数据
-python backend\seed_models.py
-```
-
-## 生产部署建议
-
-- PostgreSQL 配置连接池与定期备份
-- Redis 承载会话、限流、队列与缓存
-- 文件存储切换至 OSS/S3，使用签名 URL
-- AI/Embedding/支付等外部服务通过环境变量配置
-- 长任务使用 Celery Worker，不依赖 FastAPI BackgroundTasks
-- 接入日志收集、性能监控与错误告警
-- 启用 HTTPS 与 CORS 白名单
-
-## 2026-06 知识库与文件能力更新
-
-- 知识库资料接口返回完整内容元数据，包括原文件名、文件类型、文件大小、处理状态、片段数量、原文内容与更新时间。
-- 新增知识内容更新接口：`PATCH /knowledge-bases/{id}/sources/{source_id}`，支持文本类资料编辑后自动重新处理和更新问答索引。
-- 新增知识片段管理接口：`GET /knowledge-bases/{id}/chunks` 与 `DELETE /knowledge-bases/{id}/chunks/{chunk_id}`，用于问答引用核对和高级管理。
-- 文件下载统一保留用户上传时的原文件名，通过 `Content-Disposition` 的 `filename*` 支持中文文件名，避免下载成 UUID、临时名或乱码。
-- 文件上传和云盘记录保留 `originalFilename`、`storedFilename`、`storageKey`、`file_ext`、`mime_type`、`file_size` 等字段职责。
-- 知识库问答返回引用来源信息，便于前端从回答引用跳转到对应知识内容和片段位置。
+- 新增用户认证：忘记密码、邮件重置密码流程，SMTP 集成
+- 新增云盘文件夹导航与文件编辑器，支持在线编辑文本文件 (Cmd/Ctrl+S 保存)
+- 新增回收站：软删除机制，支持恢复和永久删除
+- 新增视频创作模块，支持多模型视频生成
+- 新增创作空间入口：整合图像生成与视频创作
+- 侧边栏优化：精简为核心 6 项（工作台/任务中心/模型广场/创作空间/知识库/云盘）
+- 页面 UI 优化：登录/注册输入框缩小、按钮紧凑化
+- 后端全局异常处理与错误日志
 
 ## License
 
